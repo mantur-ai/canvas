@@ -1,0 +1,611 @@
+{
+  "Metadata": {
+    "title": "Mantur Canvas",
+    "description": "Mantur Canvas is a local creative canvas for script storyboards, asset management, and AI generation workflows."
+  },
+  "Header": {
+    "brandName": "Mantur",
+    "logoAlt": "Mantur logo",
+    "switchLanguage": "Switch language"
+  },
+  "Common": {
+    "close": "Close",
+    "carousel": {
+      "previous": "Previous slide",
+      "next": "Next slide"
+    }
+  },
+  "Onboarding": {
+    "title": "Complete Initial Setup",
+    "description": "The workspace stays locked until every required setup item is complete. Configure each step, then refresh the status.",
+    "stepLabel": "{index}. {title}",
+    "loadError": "Unable to read setup status. Check the local service and try again.",
+    "footer": "The guide unlocks automatically after every required setup item is complete.",
+    "status": {
+      "complete": "Complete",
+      "incomplete": "Not configured"
+    },
+    "actions": {
+      "refresh": "Refresh status",
+      "checking": "Checking..."
+    },
+    "steps": {
+      "agent": {
+        "title": "Configure agent",
+        "description": "Create at least one local agent that can execute tasks.",
+        "action": "Configure"
+      },
+      "skills": {
+        "title": "Configure Skills",
+        "description": "Upload at least one skill folder so agents can reuse capabilities.",
+        "action": "Configure"
+      },
+      "modelApi": {
+        "title": "Configure model API",
+        "description": "Add at least one image or video model API configuration in settings.",
+        "action": "Configure"
+      },
+      "project": {
+        "title": "Create project",
+        "description": "Create or enter a project before the canvas can load project content.",
+        "action": "Create"
+      }
+    }
+  },
+  "AgentSwitcher": {
+    "selectAriaLabel": "Select agent",
+    "placeholder": "Select an agent",
+    "empty": "No agents yet. Open the manager to create one.",
+    "manageButton": "Manage agents",
+    "dialog": {
+      "title": "Manage agents",
+      "description": "Create, edit, and remove local agents for this project.",
+      "close": "Close"
+    },
+    "list": {
+      "title": "Agent list",
+      "add": "New agent",
+      "noDescription": "No description"
+    },
+    "form": {
+      "createTitle": "Create agent",
+      "createDescription": "Fill in the required fields and save the new agent.",
+      "editTitle": "Edit agent",
+      "editDescription": "Update the current agent and save your changes.",
+      "name": "Name",
+      "namePlaceholder": "e.g. Research agent",
+      "icon": "Icon",
+      "iconPlaceholder": "e.g. 🤖",
+      "description": "Description",
+      "descriptionPlaceholder": "Optional short description for this agent.",
+      "instructions": "Instructions",
+      "instructionsPlaceholder": "Write the agent instructions here."
+    },
+    "actions": {
+      "create": "Create agent",
+      "update": "Save changes",
+      "saving": "Saving...",
+      "reset": "Reset",
+      "edit": "Edit agent",
+      "delete": "Delete"
+    },
+    "confirm": {
+      "title": "Delete agent",
+      "description": "Delete \"{name}\"? This action cannot be undone.",
+      "cancel": "Cancel",
+      "confirm": "Delete",
+      "deleting": "Deleting..."
+    },
+    "validation": {
+      "nameRequired": "Name is required.",
+      "instructionsRequired": "Instructions are required."
+    },
+    "feedback": {
+      "loading": "Loading agents",
+      "loadError": "Unable to load agents.",
+      "saveSuccess": "Agent saved.",
+      "saveError": "Unable to save agent.",
+      "deleteSuccess": "Agent deleted.",
+      "deleteError": "Unable to delete agent."
+    }
+  },
+  "AgentExecute": {
+    "systemStart": "[System] Starting task: {executable}\n\n",
+    "processExitCode": "\n[Process exit code: {code}]",
+    "errorMessage": "\n[Error: {message}]",
+    "invalidAgentCommand": "Invalid agent command",
+    "internalServerError": "Internal server error"
+  },
+  "Home": {
+    "eyebrow": "Canvas workspace",
+    "title": "Build multilingual experiences from a locale-aware app shell.",
+    "description": "This homepage now uses next-intl routing, message catalogs, and a simple language switcher so you can expand the site without duplicating pages.",
+    "primaryCta": "Open docs",
+    "secondaryCta": "Current language",
+    "languageLabel": "Language",
+    "canvasCta": "Open flow canvas"
+  },
+  "Canvas": {
+    "eyebrow": "Flow prototype",
+    "title": "A minimal canvas wired with the libraries you added.",
+    "description": "This page combines React Flow for the graph, zustand for state, zod for seed validation, lucide-react for icons, and shadcn/ui for controls.",
+    "localeTitle": "Locale-ready shell",
+    "localeDescription": "The route and chrome stay localized, with {defaultLocale} as the default locale and {secondaryLocale} available as a secondary route.",
+    "addNode": "Add node",
+    "reset": "Reset canvas",
+    "stackTitle": "Integrated stack",
+    "stackItems": {
+      "flow": "React Flow renders draggable nodes and connections.",
+      "store": "zustand keeps the graph state in a small client store.",
+      "schema": "zod validates the initial graph data before hydration.",
+      "ui": "shadcn/ui provides the action buttons and shared UI primitives."
+    },
+    "canvasTitle": "Workspace",
+    "canvasHint": "Drag nodes, connect handles, and inspect the minimap.",
+    "nodeCount": "{count, plural, one {# node} other {# nodes}}",
+    "loadedProjectMeta": "{count, plural, one {# episode} other {# episodes}} · {aspectRatio} · {resolution}",
+    "newNodeLabel": "Idea {count}",
+    "back": "Back to home",
+    "emptyProject": "Select a project",
+    "storyboardList": {
+      "title": "Storyboards",
+      "limit": "{count}/{max}",
+      "itemLabel": "S{index}",
+      "add": "Add storyboard",
+      "addAfterCurrent": "Add below current storyboard",
+      "delete": "Delete {name}",
+      "moveUp": "Move {name} up",
+      "moveDown": "Move {name} down",
+      "confirmDeleteTitle": "Delete storyboard?",
+      "confirmDeleteDescription": "This will remove {name} from the storyboard list.",
+      "cancel": "Cancel",
+      "confirmDelete": "Delete",
+      "empty": "No storyboards",
+      "parse": "Parse now",
+      "parseAssetsFirst": "Parse assets first"
+    },
+    "storyboardImage": {
+      "title": "Image",
+      "add": "Add image"
+    },
+    "storyboardVideo": {
+      "title": "Video",
+      "add": "Add video"
+    },
+    "chatWindow": {
+      "placeholder": "Describe anything you want to generate",
+      "emptyModel": "Select a model",
+      "modelSelect": "Select generation model",
+      "inputLabel": "Enter generation content",
+      "addAttachment": "Temporarily upload images",
+      "imageFallback": "Image {index}",
+      "fileFallback": "File {index}",
+      "attachmentList": "Temporary uploaded image list",
+      "removeAttachment": "Remove image",
+      "promptPairSeparator": ": ",
+      "firstFrame": "First frame image",
+      "lastFrame": "Last frame image",
+      "assetCategories": {
+        "character": "Character",
+        "prop": "Prop",
+        "scene": "Scene",
+        "reference": "Reference image",
+        "unknown": "Other"
+      },
+      "videoShot": "Shot",
+      "videoDuration": "Duration",
+      "videoDurationUnit": "s",
+      "videoShots": {
+        "static": "Static",
+        "pushIn": "Push in",
+        "pullOut": "Pull out",
+        "pan": "Pan",
+        "tilt": "Tilt",
+        "tracking": "Tracking",
+        "orbit": "Orbit",
+        "handheld": "Handheld"
+      },
+      "expand": "Expand input",
+      "voice": "Voice input",
+      "modelMultiplier": "1×",
+      "count": "1",
+      "send": "Send generation request",
+      "stop": "Stop generation"
+    },
+    "mediaGrid": {
+      "pending": "Pending",
+      "loading": "Loading",
+      "error": "Error",
+      "success": "Done",
+      "select": "Select {name}",
+      "selectVideo": "Select video {name}",
+      "preview": "Preview",
+      "upload": "Local upload",
+      "delete": "Delete",
+      "addToLibrary": "Add to library",
+      "deleteTitle": "Delete media?",
+      "deleteDescription": "Delete {name} from this grid and project records?",
+      "cancel": "Cancel",
+      "confirmDelete": "Delete"
+    },
+    "mediaPreview": {
+      "title": "Media preview",
+      "preview": "Preview media",
+      "empty": "Nothing to preview",
+      "previous": "Previous preview",
+      "next": "Next preview"
+    }
+  },
+  "AssetCreate": {
+    "category": {
+      "character": "Character",
+      "prop": "Prop",
+      "scene": "Scene",
+      "reference": "Reference image"
+    },
+    "source": {
+      "title": "Add asset",
+      "description": "Choose where this asset comes from.",
+      "global": {
+        "title": "Import global",
+        "description": "Choose from global characters, props, and scenes."
+      },
+      "local": {
+        "title": "Local upload",
+        "description": "Upload an image into the current project asset library."
+      },
+      "ai": {
+        "title": "AI generation",
+        "description": "Save the prompt first, then generate or replace the image later."
+      }
+    },
+    "global": {
+      "title": "Global assets",
+      "description": "Choose a global asset to import.",
+      "back": "Back to characters",
+      "childCount": " · {count} child assets",
+      "unmatchedTitle": "Image info not matched",
+      "unmatchedDescription": "ID: {id}",
+      "empty": "No assets available"
+    },
+    "form": {
+      "title": "Create asset",
+      "libraryTitle": "Add to library",
+      "description": {
+        "local": "Upload a local image and fill in the asset details.",
+        "ai": "Fill in the asset details. The image slot can be replaced by upload."
+      },
+      "uploadHint": "Upload custom asset",
+      "uploadRule": "Supports png, jpg, jpeg, webp, and gif",
+      "imageError": "Image error",
+      "category": "Category",
+      "parentCharacter": "Character",
+      "parentCharacterPlaceholder": "As top-level character",
+      "name": "Asset title",
+      "namePlaceholder": "Asset title",
+      "prompt": "Asset description",
+      "promptPlaceholder": "Asset description for generation",
+      "back": "Back",
+      "confirm": "Confirm",
+      "saving": "Saving..."
+    }
+  },
+  "Sidebar": {
+    "episodes": "Episodes",
+    "assets": "Assets",
+    "projects": "Projects",
+    "settings": "Settings",
+    "skills": "Skills",
+    "chat": "Chat",
+    "video": "Video",
+    "videoFooter": {
+      "title": "Video merge",
+      "emptyTitle": "Select a storyboard",
+      "count": "{count, plural, one {# selected video} other {# selected videos}}",
+      "totalDuration": "Total {duration}",
+      "empty": "No videos",
+      "player": "Preview",
+      "play": "Play",
+      "pause": "Pause",
+      "playbackProgress": "Playback progress",
+      "removeSelectedVideo": "Remove selected video",
+      "removeSelectedVideoTitle": "Remove selected video?",
+      "removeSelectedVideoDescription": "This removes {name} from the video footer without deleting the video file.",
+      "cancel": "Cancel",
+      "confirmRemove": "Remove",
+      "merge": "Merge",
+      "merging": "Merging...",
+      "download": "Download current videos",
+      "mergeSuccess": "The merged video was saved to the selected folder.",
+      "downloadSuccess": "The current videos were saved to the selected folder.",
+      "unknownDuration": "Unknown",
+      "export": "Export",
+      "mergeError": "Unable to merge videos. Check that the selected source files still exist, then check directory access and ffmpeg.",
+      "mergeErrors": {
+        "directoryAccess": "Unable to write to the selected folder. Check directory access.",
+        "videoFileNotFound": "Unable to merge videos because one of the selected source files is missing.",
+        "videoNotFound": "Unable to merge videos because one of the selected videos no longer exists."
+      },
+      "downloadError": "Unable to download videos. Check directory access.",
+      "open": "Open video footer",
+      "close": "Close video footer",
+      "storyboardFallback": "S{index}"
+    },
+    "globalChat": {
+      "title": "Global chat",
+      "subtitle": "Work with the current project context anytime",
+      "close": "Close global chat",
+      "welcome": "I am here whenever you want to shape ideas, run agent commands, or move the project forward. Type /help to see commands.",
+      "placeholder": "Type a message, request, or /help",
+      "inputLabel": "Enter global chat message",
+      "send": "Send message",
+      "userMessage": "User message",
+      "assistantMessage": "Assistant message",
+      "attachmentOnly": "Image attachments added",
+      "listSeparator": ", ",
+      "processSummary": "Process",
+      "commands": {
+        "help": "/help: Show available commands",
+        "clear": "/clear: Clear this chat",
+        "project": "/project: Show current project details",
+        "agent": "/agent: Show current agent",
+        "models": "/models: Show available generation models"
+      },
+      "commandReplies": {
+        "agent": "Current agent: {name}\nDescription: {description}",
+        "cleared": "Chat cleared.",
+        "default": "I will send this message to the current agent command.",
+        "emptyDescription": "No description",
+        "emptyResponse": "The agent returned no response body.",
+        "executing": "Running {name}...",
+        "executionCompleteNoOutput": "Execution completed with no output.",
+        "executionFailed": "Execution failed",
+        "executionFailedMessage": "Execution failed: {message}",
+        "models": "Available models: {models}",
+        "noAgent": "Select an agent from the left agent switcher first, and make sure its instructions field is an executable command.",
+        "noModels": "No models are available.",
+        "noProject": "No project is selected.",
+        "project": "Current project: {name}\nEpisodes: {episodes}\nAspect ratio: {aspectRatio}\nResolution: {resolution}",
+        "stopped": "Execution stopped.",
+        "unknown": "Unknown command: {command}. Type /help to see available commands."
+      }
+    },
+    "episodePanel": {
+      "selectedCount": "{count}/{max}",
+      "empty": "No episodes in the current project",
+      "noCurrentProject": "Enter a project first"
+    },
+    "assetTabs": {
+      "all": "All",
+      "character": "Character",
+      "scene": "Scene",
+      "prop": "Prop",
+      "voice": "Voice",
+      "video": "Video"
+    },
+    "assetPanel": {
+      "searchPlaceholder": "Search assets",
+      "parseAll": "Parse assets",
+      "addAsset": "Add",
+      "deleteAsset": "Delete asset",
+      "deleteConfirmTitle": "Delete asset",
+      "deleteConfirmDescription": "Delete \"{name}\"? This action cannot be undone.",
+      "cancel": "Cancel",
+      "confirmDelete": "Delete",
+      "deleting": "Deleting...",
+      "notParsed": "Assets have not been parsed",
+      "parsing": "Parsing assets...",
+      "noCurrentProject": "Enter a project first",
+      "loading": "Loading assets",
+      "imagePending": "Pending",
+      "detail": {
+        "title": "Asset details",
+        "open": "View details",
+        "close": "Close details",
+        "type": "Type: {value}",
+        "source": "Source: {value}",
+        "emptyValue": "No information",
+        "noChildren": "No linked assets"
+      },
+      "actions": {
+        "parse": {
+          "title": "Parse assets",
+          "description": "Parse assets again from the current project content?",
+          "confirm": "Start parsing"
+        }
+      }
+    }
+  },
+  "Skills": {
+    "title": "Skill Folders",
+    "description": "Manage skill folders under the root skills directory.",
+    "empty": "No skill folders yet",
+    "emptyCategory": "Not uploaded yet",
+    "fileCount": "{count, plural, one {# file} other {# files}}",
+    "categories": {
+      "asset-image-gen": "Asset Image Generation",
+      "global-asset-parser": "Global Asset Parsing",
+      "storyboard-image-gen": "Storyboard Image Generation",
+      "storyboard-list-parser": "Storyboard List Parsing",
+      "storyboard-video-gen": "Storyboard Video Generation",
+      "upload-images": "Image Upload"
+    },
+    "actions": {
+      "upload": "Upload",
+      "uploading": "Uploading...",
+      "delete": "Delete",
+      "confirmDelete": "Confirm"
+    },
+    "feedback": {
+      "loading": "Loading...",
+      "loadError": "Unable to load skill folders.",
+      "uploadSuccess": "Skill folder uploaded.",
+      "uploadError": "Unable to upload skill folder.",
+      "deleteError": "Unable to delete skill folder."
+    }
+  },
+  "Settings": {
+    "modelManager": {
+      "title": "Model Manager",
+      "description": "Manage available image and video models. Each category can contain multiple models.",
+      "sections": {
+        "image": "Image",
+        "video": "Video",
+        "imageBed": "Image Host",
+        "workflowSkill": "Skills"
+      },
+      "types": {
+        "image": "Image",
+        "video": "Video"
+      },
+      "form": {
+        "createTitle": "New Config",
+        "editTitle": "Edit Config",
+        "subtitle": "Add a {type} generation model",
+        "name": "Model Name",
+        "namePlaceholder": "Enter model name",
+        "imageBedName": "Image Host Name",
+        "imageBedNamePlaceholder": "Enter image host name",
+        "apiKey": "API Key",
+        "apiKeyPlaceholder": "Enter model API key",
+        "default": "Default",
+        "defaultImageBed": "Default image host",
+        "example": "Example",
+        "examplePlaceholder": "Enter a sample call or usage note for this model",
+        "imageBedExamplePlaceholder": "Enter the upload endpoint, access domain, or usage sample",
+        "videoReferenceMode": "Video Reference Mode",
+        "providerIcon": "Matched provider icon",
+        "editing": "Editing \"{name}\""
+      },
+      "videoReferenceModes": {
+        "all-purpose": "All-purpose Reference",
+        "first-last-frame": "First/Last Frame"
+      },
+      "workflowFeature": {
+        "asset-parse": "Asset Parsing",
+        "asset-map-generate": "Asset Binding",
+        "asset-generate": "Batch Asset Images",
+        "asset-panel-generate": "Single Asset Image",
+        "storyboard-image-generate": "Storyboard Image",
+        "storyboard-parse": "Storyboard Parsing",
+        "video-generate": "Storyboard Video"
+      },
+      "workflowSkill": {
+        "feature": "Feature Category",
+        "primarySkill": "Primary Skill",
+        "uploadSkill": "Upload Skill",
+        "none": "None",
+        "selectFeature": "Select a feature category first",
+        "summary": "Primary: {primarySkill}; Upload: {uploadSkill}"
+      },
+      "actions": {
+        "new": "New",
+        "save": "Save",
+        "saving": "Saving...",
+        "remove": "Remove model",
+        "confirmRemove": "Confirm",
+        "setDefault": "Set default image host",
+        "showApiKey": "Show API key",
+        "hideApiKey": "Hide API key"
+      },
+      "list": {
+        "title": "{type} Models",
+        "count": "{count, plural, one {# item} other {# items}}",
+        "empty": "No models yet"
+      },
+      "validation": {
+        "nameRequired": "Name is required.",
+        "apiKeyRequired": "API key is required.",
+        "exampleRequired": "Example is required.",
+        "required": "Model name, API key, and example are required.",
+        "saveFailed": "Unable to save model. Please try again."
+      },
+      "feedback": {
+        "loading": "Loading...",
+        "loadError": "Unable to load config.",
+        "saveError": "Fill in name, API key, and example before saving.",
+        "saved": "Config saved."
+      }
+    }
+  },
+  "Projects": {
+    "newProject": "New Project",
+    "loading": "Loading...",
+    "empty": "No projects yet",
+    "loadError": "Failed to load projects",
+    "episodeCount": "{count, plural, one {# episode} other {# episodes}}",
+    "enter": "Enter project",
+    "edit": "Edit project",
+    "delete": "Delete project",
+    "editTitle": "Edit Project",
+    "save": "Save",
+    "saving": "Saving...",
+    "editSuccess": "Project updated",
+    "editError": "Failed to update project",
+    "deleteTitle": "Delete project",
+    "deleteDescription": "Delete \"{name}\"? This removes the project folder and cannot be undone.",
+    "deleteCurrentDisabled": "The currently selected project cannot be deleted",
+    "deleting": "Deleting...",
+    "deleteSuccess": "Project deleted",
+    "deleteError": "Failed to delete project",
+    "enterSuccess": "Entered \"{name}\"",
+    "addScript": {
+      "title": "New Script Project",
+      "uploadLabel": "Upload Script File",
+      "uploadDescription": "Only Markdown scripts split by episode structure are supported. The project name is filled after parsing succeeds.",
+      "uploadHint": "Click or drag a .md file here",
+      "parsing": "Parsing script...",
+      "invalidFormat": "Please upload a .md format script file",
+      "parseError": "Parse failed — no episode structure found",
+      "viewSample": "View sample script",
+      "projectName": "Project Name",
+      "projectNameDescription": "This name is used for the local project display metadata and can still be edited after parsing.",
+      "projectNamePlaceholder": "Enter project name",
+      "description": "Description",
+      "descriptionDescription": "Add the project purpose, style, or production notes so it is easier to manage later.",
+      "descriptionPlaceholder": "e.g. Storyboard project for the season one promo",
+      "recipePack": "Recipe Pack",
+      "addRecipe": "Add recipe",
+      "customRecipePrompt": "Custom recipe:",
+      "recipes": {
+        "cinematic": {
+          "label": "Cinematic",
+          "prompt": "Cinematic: high-contrast lighting, grounded camera language, nuanced emotion."
+        },
+        "anime": {
+          "label": "Anime",
+          "prompt": "Anime: vivid colors, expressive faces, crisp silhouettes."
+        },
+        "noir": {
+          "label": "Noir",
+          "prompt": "Noir: low saturation, strong shadows, suspenseful atmosphere."
+        },
+        "portrait": {
+          "label": "Portrait",
+          "prompt": "Portrait: emphasize character state, wardrobe details, and performance emotion."
+        }
+      },
+      "aspectRatio": "Aspect Ratio",
+      "aspectRatioDescription": "Choose the default canvas ratio for storyboards and video assets created from this project.",
+      "resolution": "Resolution",
+      "resolutionDescription": "Choose the default output resolution. Higher resolution usually uses more generation and storage resources.",
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "creating": "Creating...",
+      "createSuccess": "Project created successfully",
+      "createError": "Failed to create project",
+      "fileMissing": "File missing, please re-upload",
+      "sampleTitle": "Sample Script Preview",
+      "sampleLoadError": "Failed to load sample file",
+      "loadSample": "Load sample file"
+    }
+  },
+  "Locale": {
+    "en": "English",
+    "zh": "简体中文",
+    "zh-TW": "繁體中文",
+    "ja": "日本語",
+    "ru": "Русский",
+    "vi": "Tiếng Việt"
+  }
+}

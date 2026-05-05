@@ -1,0 +1,79 @@
+{
+  "imageModels": [
+    {
+      "id": "image-8b4c4644-0eda-49fc-8d2b-50877e9c72e3",
+      "name": "Seedream 5.0 lite",
+      "apiKey": "your-api-key",
+      "example": "curl https://ark.cn-beijing.volces.com/api/v3/images/generations \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: Bearer $ARK_API_KEY\" \\\n  -d '{\n    \"model\": \"doubao-seedream-5-0-260128\",\n    \"prompt\": \"将图1的服装换为图2的服装\",\n    \"image\": [\"https://ark-project.tos-cn-beijing.volces.com/doc_image/seedream4_imagesToimage_1.png\", \"https://ark-project.tos-cn-beijing.volces.com/doc_image/seedream4_5_imagesToimage_2.png\"],\n    \"sequential_image_generation\": \"disabled\",\n    \"size\": \"2K\",\n    \"output_format\":\"png\",\n    \"watermark\": false\n}'"
+    },
+    {
+      "id": "image-8b4c4644-0eda-49fc-8d2b-50877e9c72e4",
+      "name": "gpt-image-2",
+      "apiKey": "your-api-key",
+      "example": "curl https://api.openai.com/v1/images/generations \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: Bearer $OPENAI_API_KEY\" \\\n  -d '{\n    \"model\": \"gpt-image-2\",\n    \"prompt\": \"将这张参考图中的现代客厅风格改为‘赛博朋克’霓虹风格，保留基本的家具布局，但增加全息投影和蓝紫色灯光。\",\n    \"image_url\": \"https://your-domain.com/base-image.jpg\",\n    \"strength\": 0.75,\n    \"n\": 1,\n    \"size\": \"1024x1024\",\n    \"quality\": \"high\",\n    \"response_format\": \"url\"\n  }'"
+    },
+    {
+      "id": "image-8b4c4644-0eda-49fc-8d2b-50877e9c72e5",
+      "name": "Nano Banana 2",
+      "apiKey": "your-api-key",
+      "example": "curl -s -X POST \\\n  \"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent\" \\\n    -H \"x-goog-api-key: $GEMINI_API_KEY\" \\\n    -H 'Content-Type: application/json' \\\n    -d \"{\n      \\\"contents\\\": [{\n        \\\"parts\\\":[\n            {\\\"text\\\": \\\"An office group photo of these people, they are making funny faces.\\\"},\n            {\\\"inline_data\\\": {\\\"mime_type\\\":\\\"image/png\\\", \\\"data\\\": \\\"<BASE64_DATA_IMG_1>\\\"}},\n            {\\\"inline_data\\\": {\\\"mime_type\\\":\\\"image/png\\\", \\\"data\\\": \\\"<BASE64_DATA_IMG_2>\\\"}},\n            {\\\"inline_data\\\": {\\\"mime_type\\\":\\\"image/png\\\", \\\"data\\\": \\\"<BASE64_DATA_IMG_3>\\\"}},\n            {\\\"inline_data\\\": {\\\"mime_type\\\":\\\"image/png\\\", \\\"data\\\": \\\"<BASE64_DATA_IMG_4>\\\"}},\n            {\\\"inline_data\\\": {\\\"mime_type\\\":\\\"image/png\\\", \\\"data\\\": \\\"<BASE64_DATA_IMG_5>\\\"}}\n        ]\n      }],\n      \\\"generationConfig\\\": {\n        \\\"responseModalities\\\": [\\\"TEXT\\\", \\\"IMAGE\\\"],\n        \\\"imageConfig\\\": {\n          \\\"aspectRatio\\\": \\\"5:4\\\",\n          \\\"imageSize\\\": \\\"2K\\\"\n        }\n      }\n    }\""
+    },
+    {
+      "id": "image-8b4c4644-0eda-49fc-8d2b-50877e9c72e6",
+      "name": "Nano Banana Pro",
+      "apiKey": "your-api-key",
+      "example": "curl -s -X POST \\\n  \"https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent\" \\\n    -H \"x-goog-api-key: $GEMINI_API_KEY\" \\\n    -H 'Content-Type: application/json' \\\n    -d \"{\n      \\\"contents\\\": [{\n        \\\"parts\\\":[\n            {\\\"text\\\": \\\"An office group photo of these people, they are making funny faces.\\\"},\n            {\\\"inline_data\\\": {\\\"mime_type\\\":\\\"image/png\\\", \\\"data\\\": \\\"<BASE64_DATA_IMG_1>\\\"}},\n            {\\\"inline_data\\\": {\\\"mime_type\\\":\\\"image/png\\\", \\\"data\\\": \\\"<BASE64_DATA_IMG_2>\\\"}},\n            {\\\"inline_data\\\": {\\\"mime_type\\\":\\\"image/png\\\", \\\"data\\\": \\\"<BASE64_DATA_IMG_3>\\\"}},\n            {\\\"inline_data\\\": {\\\"mime_type\\\":\\\"image/png\\\", \\\"data\\\": \\\"<BASE64_DATA_IMG_4>\\\"}},\n            {\\\"inline_data\\\": {\\\"mime_type\\\":\\\"image/png\\\", \\\"data\\\": \\\"<BASE64_DATA_IMG_5>\\\"}}\n        ]\n      }],\n      \\\"generationConfig\\\": {\n        \\\"responseModalities\\\": [\\\"TEXT\\\", \\\"IMAGE\\\"],\n        \\\"imageConfig\\\": {\n          \\\"aspectRatio\\\": \\\"5:4\\\",\n          \\\"imageSize\\\": \\\"2K\\\"\n        }\n      }\n    }\""
+    },
+    {
+      "id": "image-8b4c4644-0eda-49fc-8d2b-50877e9c72e7",
+      "name": "doubao-seedream-4.5",
+      "apiKey": "your-api-key",
+      "example": "curl https://ark.cn-beijing.volces.com/api/v3/images/generations \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: Bearer $ARK_API_KEY\" \\\n  -d '{\n    \"model\": \"doubao-seedream-4-5-251128\",\n    \"prompt\": \"将图1的服装换为图2的服装\",\n    \"image\": [\"https://ark-project.tos-cn-beijing.volces.com/doc_image/seedream4_imagesToimage_1.png\", \"https://ark-project.tos-cn-beijing.volces.com/doc_image/seedream4_5_imagesToimage_2.png\"],\n    \"sequential_image_generation\": \"disabled\",\n    \"size\": \"2K\",\n    \"output_format\":\"png\",\n    \"watermark\": false\n}'"
+    }
+  ],
+  "videoModels": [
+    {
+      "id": "video-660889a8-e3e3-4531-b003-7e66c5b734cf",
+      "name": "seedance2.0",
+      "apiKey": "your-api-key",
+      "example": "curl https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: Bearer $ARK_API_KEY\" \\\n  -d '{\n    \"model\": \"doubao-seedance-2-0-260128\",\n    \"content\": [\n         {\n            \"type\": \"text\",\n            \"text\": \"全程使用视频1的第一视角构图，全程使用音频1作为背景音乐。第一人称视角果茶宣传广告，seedance牌「苹苹安安」苹果果茶限定款；首帧为图片1，你的手摘下一颗带晨露的阿克苏红苹果，轻脆的苹果碰撞声；2-4 秒：快速切镜，你的手将苹果块投入雪克杯，加入冰块与茶底，用力摇晃，冰块碰撞声与摇晃声卡点轻快鼓点，背景音：「鲜切现摇」；4-6 秒：第一人称成品特写，分层果茶倒入透明杯，你的手轻挤奶盖在顶部铺展，在杯身贴上粉红包标，镜头拉近看奶盖与果茶的分层纹理；6-8 秒：第一人称手持举杯，你将图片2中的果茶举到镜头前（模拟递到观众面前的视角），杯身标签清晰可见，背景音「来一口鲜爽」，尾帧定格为图片2。背景声音统一为女生音色。\"\n        },\n        {\n            \"type\": \"image_url\",\n            \"image_url\": {\n                \"url\": \"https://ark-project.tos-cn-beijing.volces.com/doc_image/r2v_tea_pic1.jpg\"\n            },\n            \"role\": \"reference_image\"\n        },\n        {\n            \"type\": \"image_url\",\n            \"image_url\": {\n                \"url\": \"https://ark-project.tos-cn-beijing.volces.com/doc_image/r2v_tea_pic2.jpg\"\n            },\n            \"role\": \"reference_image\"\n        },\n        {\n          \"type\": \"video_url\",\n          \"video_url\": {\n              \"url\": \"https://ark-project.tos-cn-beijing.volces.com/doc_video/r2v_tea_video1.mp4\"\n          },\n          \"role\": \"reference_video\"\n        },\n        {\n          \"type\": \"audio_url\",\n          \"audio_url\": {\n              \"url\": \"https://ark-project.tos-cn-beijing.volces.com/doc_audio/r2v_tea_audio1.mp3\"\n          },\n          \"role\": \"reference_audio\"\n        }\n    ],\n    \"generate_audio\":true,\n    \"ratio\": \"16:9\",\n    \"duration\": 11,\n    \"watermark\": false\n}'",
+      "videoReferenceMode": "all-purpose"
+    }
+  ],
+  "imageBeds": [
+    {
+      "id": "imageBed-5875e695-88fc-4066-9a7b-af7e18405d1d",
+      "name": "imgbb",
+      "apiKey": "your-api-key",
+      "example": "1",
+      "isDefault": true
+    }
+  ],
+  "workflowSkills": {
+    "asset-parse": {
+      "primarySkill": "global-asset-parser"
+    },
+    "asset-map-generate": {
+      "primarySkill": "storyboard-list-parser"
+    },
+    "asset-generate": {
+      "primarySkill": "asset-image-gen",
+      "uploadSkill": "upload-images"
+    },
+    "asset-panel-generate": {
+      "primarySkill": "asset-image-gen",
+      "uploadSkill": "upload-images"
+    },
+    "storyboard-image-generate": {
+      "primarySkill": "storyboard-image-gen",
+      "uploadSkill": "upload-images"
+    },
+    "storyboard-parse": {
+      "primarySkill": "storyboard-list-parser"
+    },
+    "video-generate": {
+      "primarySkill": "storyboard-video-gen",
+      "uploadSkill": "upload-images"
+    }
+  }
+}

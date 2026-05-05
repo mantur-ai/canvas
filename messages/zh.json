@@ -1,0 +1,611 @@
+{
+  "Metadata": {
+    "title": "Mantur Canvas",
+    "description": "Mantur Canvas 是面向剧本分镜、素材管理和 AI 生成工作流的本地创作画布。"
+  },
+  "Header": {
+    "brandName": "Mantur",
+    "logoAlt": "Mantur 标志",
+    "switchLanguage": "切换语言"
+  },
+  "Common": {
+    "close": "关闭",
+    "carousel": {
+      "previous": "上一张幻灯片",
+      "next": "下一张幻灯片"
+    }
+  },
+  "Onboarding": {
+    "title": "完成初始配置",
+    "description": "以下配置完成前，工作区会保持锁定。请按步骤补齐后刷新检查状态。",
+    "stepLabel": "{index}、{title}",
+    "loadError": "配置状态读取失败，请检查本地服务后重试。",
+    "footer": "所有项目启动必需项完成后，引导弹窗会自动解除。",
+    "status": {
+      "complete": "已完成",
+      "incomplete": "未配置"
+    },
+    "actions": {
+      "refresh": "刷新状态",
+      "checking": "检查中..."
+    },
+    "steps": {
+      "agent": {
+        "title": "配置智能体",
+        "description": "创建至少一个可用于执行任务的本地智能体。",
+        "action": "去配置"
+      },
+      "skills": {
+        "title": "配置 Skills",
+        "description": "上传至少一个技能文件夹，让智能体拥有可复用能力。",
+        "action": "去配置"
+      },
+      "modelApi": {
+        "title": "配置模型 API",
+        "description": "在设置里添加至少一个图片或视频模型 API 配置。",
+        "action": "去配置"
+      },
+      "project": {
+        "title": "创建项目",
+        "description": "创建或进入一个项目后，画布才能加载项目内容。",
+        "action": "去创建"
+      }
+    }
+  },
+  "AgentSwitcher": {
+    "selectAriaLabel": "选择智能体",
+    "placeholder": "选择智能体",
+    "empty": "当前还没有智能体，请先打开管理面板新增。",
+    "manageButton": "管理智能体",
+    "dialog": {
+      "title": "管理智能体",
+      "description": "为当前项目新增、编辑和删除本地智能体。",
+      "close": "关闭"
+    },
+    "list": {
+      "title": "智能体列表",
+      "add": "新增智能体",
+      "noDescription": "暂无描述"
+    },
+    "form": {
+      "createTitle": "新增智能体",
+      "createDescription": "填写必填字段后保存新的智能体。",
+      "editTitle": "编辑智能体",
+      "editDescription": "修改当前智能体信息并保存。",
+      "name": "名称",
+      "namePlaceholder": "例如：研究助手",
+      "icon": "图标",
+      "iconPlaceholder": "例如：🤖",
+      "description": "描述",
+      "descriptionPlaceholder": "可选，用一句话描述这个智能体。",
+      "instructions": "指令",
+      "instructionsPlaceholder": "在这里填写智能体指令。"
+    },
+    "actions": {
+      "create": "新增智能体",
+      "update": "保存修改",
+      "saving": "保存中...",
+      "reset": "重置",
+      "edit": "编辑智能体",
+      "delete": "删除"
+    },
+    "confirm": {
+      "title": "确认删除智能体",
+      "description": "确定删除“{name}”吗？此操作无法撤销。",
+      "cancel": "取消",
+      "confirm": "确认删除",
+      "deleting": "删除中..."
+    },
+    "validation": {
+      "nameRequired": "名称不能为空。",
+      "instructionsRequired": "指令不能为空。"
+    },
+    "feedback": {
+      "loading": "正在加载智能体",
+      "loadError": "智能体加载失败。",
+      "saveSuccess": "智能体已保存。",
+      "saveError": "智能体保存失败。",
+      "deleteSuccess": "智能体已删除。",
+      "deleteError": "智能体删除失败。"
+    }
+  },
+  "AgentExecute": {
+    "systemStart": "[系统] 启动任务：{executable}\n\n",
+    "processExitCode": "\n[进程退出码：{code}]",
+    "errorMessage": "\n[错误：{message}]",
+    "invalidAgentCommand": "无效的 Agent 命令",
+    "internalServerError": "内部服务错误"
+  },
+  "Home": {
+    "eyebrow": "画布工作区",
+    "title": "从带语言感知的应用外壳开始构建多语言体验。",
+    "description": "首页现在已经切到 next-intl 路由、消息目录和语言切换入口，后续扩展页面时可以直接沿用统一的国际化结构。",
+    "primaryCta": "查看文档",
+    "secondaryCta": "当前语言",
+    "languageLabel": "语言",
+    "canvasCta": "打开流程画布"
+  },
+  "Canvas": {
+    "eyebrow": "流程原型",
+    "title": "一个把新增库真正串起来的最小画布。",
+    "description": "这个页面把 React Flow 图编辑、zustand 状态、zod 种子数据校验、lucide-react 图标和 shadcn/ui 控件组合到了一起。",
+    "localeTitle": "已接入多语言外壳",
+    "localeDescription": "当前路由和界面保持本地化，默认语言是 {defaultLocale}，同时保留 {secondaryLocale} 路由可切换。",
+    "addNode": "新增节点",
+    "reset": "重置画布",
+    "stackTitle": "集成栈",
+    "stackItems": {
+      "flow": "React Flow 负责渲染可拖拽节点和连线。",
+      "store": "zustand 用一个轻量 client store 保存画布状态。",
+      "schema": "zod 在 hydration 前校验初始流程数据。",
+      "ui": "shadcn/ui 提供操作按钮和共享 UI 基元。"
+    },
+    "canvasTitle": "工作区",
+    "canvasHint": "可以拖动节点、连接锚点，并观察右下角缩略图。",
+    "nodeCount": "{count} 个节点",
+    "loadedProjectMeta": "{count} 集 · {aspectRatio} · {resolution}",
+    "newNodeLabel": "想法 {count}",
+    "back": "返回首页",
+    "emptyProject": "请选择项目",
+    "storyboardList": {
+      "title": "分镜列表",
+      "limit": "{count}/{max}",
+      "itemLabel": "S{index}",
+      "add": "新增分镜",
+      "addAfterCurrent": "在当前分镜下新增",
+      "delete": "删除 {name}",
+      "moveUp": "上移 {name}",
+      "moveDown": "下移 {name}",
+      "confirmDeleteTitle": "删除分镜？",
+      "confirmDeleteDescription": "将从分镜列表中移除 {name}。",
+      "cancel": "取消",
+      "confirmDelete": "删除",
+      "empty": "暂无分镜",
+      "parse": "一键解析",
+      "parseAssetsFirst": "请先解析资产"
+    },
+    "storyboardImage": {
+      "title": "图片",
+      "add": "添加图片"
+    },
+    "storyboardVideo": {
+      "title": "视频",
+      "add": "添加视频"
+    },
+    "chatWindow": {
+      "placeholder": "描述任何你想要生成的内容",
+      "emptyModel": "请选择模型",
+      "modelSelect": "选择生成模型",
+      "inputLabel": "输入生成内容",
+      "addAttachment": "临时上传图片",
+      "imageFallback": "图片{index}",
+      "fileFallback": "文件{index}",
+      "attachmentList": "临时上传图片列表",
+      "removeAttachment": "移除图片",
+      "promptPairSeparator": "：",
+      "firstFrame": "首帧图",
+      "lastFrame": "尾帧图",
+      "assetCategories": {
+        "character": "角色",
+        "prop": "道具",
+        "scene": "场景",
+        "reference": "参考图",
+        "unknown": "其他"
+      },
+      "videoShot": "镜头",
+      "videoDuration": "时长",
+      "videoDurationUnit": "s",
+      "videoShots": {
+        "static": "固定",
+        "pushIn": "推进",
+        "pullOut": "拉远",
+        "pan": "摇镜",
+        "tilt": "俯仰",
+        "tracking": "跟拍",
+        "orbit": "环绕",
+        "handheld": "手持"
+      },
+      "expand": "展开输入框",
+      "voice": "语音输入",
+      "modelMultiplier": "1×",
+      "count": "1",
+      "send": "发送生成请求",
+      "stop": "停止生成"
+    },
+    "mediaGrid": {
+      "pending": "待生成",
+      "loading": "生成中",
+      "error": "Error",
+      "success": "已完成",
+      "select": "选择 {name}",
+      "selectVideo": "选中视频 {name}",
+      "preview": "预览",
+      "upload": "本地上传",
+      "delete": "删除",
+      "addToLibrary": "入库",
+      "deleteTitle": "删除媒体？",
+      "deleteDescription": "确定从当前宫格和项目记录中删除“{name}”吗？",
+      "cancel": "取消",
+      "confirmDelete": "删除"
+    },
+    "mediaPreview": {
+      "title": "媒体预览",
+      "preview": "预览媒体",
+      "empty": "暂无可预览内容",
+      "previous": "上一个预览",
+      "next": "下一个预览"
+    }
+  },
+  "AssetCreate": {
+    "category": {
+      "character": "角色",
+      "prop": "道具",
+      "scene": "场景",
+      "reference": "参考图"
+    },
+    "source": {
+      "title": "新增素材",
+      "description": "选择素材来源。",
+      "global": {
+        "title": "全局引入",
+        "description": "从全局资产的角色、道具、场景中选择。"
+      },
+      "local": {
+        "title": "本地上传",
+        "description": "上传图片并写入当前项目资产库。"
+      },
+      "ai": {
+        "title": "AI生成",
+        "description": "先写入提示词，图片可稍后生成或替换。"
+      }
+    },
+    "global": {
+      "title": "全局资产",
+      "description": "选择要引入的全局资产。",
+      "back": "返回角色列表",
+      "childCount": " · {count} 个子资产",
+      "unmatchedTitle": "未匹配图片信息",
+      "unmatchedDescription": "ID：{id}",
+      "empty": "暂无可选资产"
+    },
+    "form": {
+      "title": "新建素材",
+      "libraryTitle": "素材入库",
+      "description": {
+        "local": "上传本地图片并填写资产信息。",
+        "ai": "填写资产信息，图片位置可上传替换。"
+      },
+      "uploadHint": "上传自定义资产",
+      "uploadRule": "支持 png、jpg、jpeg、webp、gif",
+      "imageError": "图片错误",
+      "category": "入库目录",
+      "parentCharacter": "所属角色",
+      "parentCharacterPlaceholder": "作为一级角色",
+      "name": "资产标题",
+      "namePlaceholder": "这里是资产的标题",
+      "prompt": "资产描述",
+      "promptPlaceholder": "这里是资产的描述，可用于生成",
+      "back": "返回",
+      "confirm": "确定",
+      "saving": "保存中..."
+    }
+  },
+  "Sidebar": {
+    "episodes": "分集",
+    "assets": "资产",
+    "projects": "项目管理",
+    "settings": "设置",
+    "skills": "技能",
+    "chat": "聊天",
+    "video": "视频",
+    "videoFooter": {
+      "title": "视频合成",
+      "emptyTitle": "请选择分镜",
+      "count": "{count} 个已选视频",
+      "totalDuration": "总时长 {duration}",
+      "empty": "暂无视频",
+      "player": "预览",
+      "play": "一键播放",
+      "pause": "暂停",
+      "playbackProgress": "播放进度",
+      "removeSelectedVideo": "移除选中视频",
+      "removeSelectedVideoTitle": "移除选中视频？",
+      "removeSelectedVideoDescription": "将从视频栏中移除 {name}，视频文件不会被删除。",
+      "cancel": "取消",
+      "confirmRemove": "移除",
+      "merge": "一键合成",
+      "merging": "合并中...",
+      "download": "下载当前视频",
+      "mergeSuccess": "视频已合成到指定目录。",
+      "downloadSuccess": "当前视频已下载到指定目录。",
+      "unknownDuration": "未知",
+      "export": "导出",
+      "mergeError": "视频合成失败，请先确认选中的源视频文件仍存在，再检查目录权限和 ffmpeg。",
+      "mergeErrors": {
+        "directoryAccess": "无法写入选中的文件夹，请检查目录权限。",
+        "videoFileNotFound": "视频合成失败：选中的源视频文件缺失。",
+        "videoNotFound": "视频合成失败：选中的视频记录不存在。"
+      },
+      "downloadError": "视频下载失败，请确认浏览器支持目录选择。",
+      "open": "展开视频栏",
+      "close": "关闭视频栏",
+      "storyboardFallback": "S{index}"
+    },
+    "globalChat": {
+      "title": "全局聊天",
+      "subtitle": "随时处理当前项目上下文",
+      "close": "关闭全局聊天",
+      "welcome": "我在这里，可以随时帮你整理想法、执行 Agent 命令或推进项目。输入 /help 查看可用命令。",
+      "placeholder": "输入消息、生成需求或 /help",
+      "inputLabel": "输入全局聊天消息",
+      "send": "发送消息",
+      "userMessage": "用户消息",
+      "assistantMessage": "助手消息",
+      "attachmentOnly": "已添加图片附件",
+      "listSeparator": "、",
+      "processSummary": "执行过程",
+      "commands": {
+        "help": "/help：查看可用命令",
+        "clear": "/clear：清空当前聊天",
+        "project": "/project：查看当前项目信息",
+        "agent": "/agent：查看当前 Agent",
+        "models": "/models：查看可用生成模型"
+      },
+      "commandReplies": {
+        "agent": "当前 Agent：{name}\n描述：{description}",
+        "cleared": "聊天已清空。",
+        "default": "我会把这条消息交给当前 Agent 执行。",
+        "emptyDescription": "暂无描述",
+        "emptyResponse": "Agent 没有返回响应体。",
+        "executing": "正在执行 {name}...",
+        "executionCompleteNoOutput": "执行完成，但没有输出。",
+        "executionFailed": "执行失败",
+        "executionFailedMessage": "执行失败：{message}",
+        "models": "可用模型：{models}",
+        "noAgent": "请先在左侧 Agent 选择器中选择一个 Agent，并确保它的指令字段是可执行命令。",
+        "noModels": "当前没有可用模型。",
+        "noProject": "当前还没有选择项目。",
+        "project": "当前项目：{name}\n分集数：{episodes}\n画幅：{aspectRatio}\n分辨率：{resolution}",
+        "stopped": "执行已停止。",
+        "unknown": "未知命令：{command}。输入 /help 查看可用命令。"
+      }
+    },
+    "episodePanel": {
+      "selectedCount": "{count}/{max}",
+      "empty": "当前项目暂无分集",
+      "noCurrentProject": "请先进入项目"
+    },
+    "assetTabs": {
+      "all": "全部",
+      "character": "角色",
+      "scene": "场景",
+      "prop": "道具",
+      "voice": "音色",
+      "video": "视频"
+    },
+    "assetPanel": {
+      "searchPlaceholder": "搜索资产",
+      "parseAll": "一键解析资产",
+      "addAsset": "添加",
+      "deleteAsset": "删除资产",
+      "deleteConfirmTitle": "确认删除资产",
+      "deleteConfirmDescription": "确定删除“{name}”吗？此操作无法撤销。",
+      "cancel": "取消",
+      "confirmDelete": "确认删除",
+      "deleting": "删除中...",
+      "notParsed": "还未解析资产",
+      "parsing": "正在解析资产...",
+      "noCurrentProject": "请先进入项目",
+      "loading": "正在加载资产",
+      "imagePending": "待生成",
+      "detail": {
+        "title": "资产详情",
+        "open": "查看详情",
+        "close": "关闭详情",
+        "type": "类型：{value}",
+        "source": "来源：{value}",
+        "emptyValue": "暂无信息",
+        "noChildren": "暂无关联资产"
+      },
+      "actions": {
+        "parse": {
+          "title": "确认解析资产",
+          "description": "将根据当前项目内容重新解析资产，确认继续吗？",
+          "confirm": "开始解析"
+        }
+      }
+    }
+  },
+  "Skills": {
+    "title": "技能文件夹",
+    "description": "管理根目录 skills 下的技能文件夹。",
+    "empty": "暂无技能文件夹",
+    "emptyCategory": "尚未上传",
+    "fileCount": "{count} 个文件",
+    "categories": {
+      "asset-image-gen": "资产图生成",
+      "global-asset-parser": "全局资产解析",
+      "storyboard-image-gen": "分镜图生成",
+      "storyboard-list-parser": "分镜列表解析",
+      "storyboard-video-gen": "分镜视频生成",
+      "upload-images": "图片上传"
+    },
+    "actions": {
+      "upload": "上传",
+      "uploading": "上传中...",
+      "delete": "删除",
+      "confirmDelete": "确认删除"
+    },
+    "feedback": {
+      "loading": "加载中...",
+      "loadError": "技能文件夹加载失败。",
+      "uploadSuccess": "技能文件夹已上传。",
+      "uploadError": "技能文件夹上传失败。",
+      "deleteError": "技能文件夹删除失败。"
+    }
+  },
+  "Settings": {
+    "modelManager": {
+      "title": "模型管理器",
+      "description": "为图片和视频分别维护可用模型，每类都可以添加多个模型。",
+      "sections": {
+        "image": "图片",
+        "video": "视频",
+        "imageBed": "图床",
+        "workflowSkill": "技能"
+      },
+      "types": {
+        "image": "图片",
+        "video": "视频"
+      },
+      "form": {
+        "createTitle": "新增配置",
+        "editTitle": "编辑配置",
+        "subtitle": "添加一个{type}生成模型",
+        "name": "模型名称",
+        "namePlaceholder": "输入模型名称",
+        "imageBedName": "图床名称",
+        "imageBedNamePlaceholder": "输入图床名称",
+        "apiKey": "API Key",
+        "apiKeyPlaceholder": "输入模型 API Key",
+        "default": "默认",
+        "defaultImageBed": "默认图床",
+        "example": "示例",
+        "examplePlaceholder": "输入这个模型的调用示例或用途说明",
+        "imageBedExamplePlaceholder": "输入图床上传地址、访问域名或使用示例",
+        "videoReferenceMode": "视频参考模式",
+        "providerIcon": "已匹配厂商图标",
+        "editing": "正在编辑“{name}”"
+      },
+      "videoReferenceModes": {
+        "all-purpose": "全能参考",
+        "first-last-frame": "首尾帧"
+      },
+      "workflowFeature": {
+        "asset-parse": "资产解析",
+        "asset-map-generate": "资产绑定",
+        "asset-generate": "批量资产图",
+        "asset-panel-generate": "单个资产图",
+        "storyboard-image-generate": "分镜图片",
+        "storyboard-parse": "分镜拆分",
+        "video-generate": "分镜视频"
+      },
+      "workflowSkill": {
+        "feature": "功能类别",
+        "primarySkill": "主技能",
+        "uploadSkill": "上传技能",
+        "none": "无",
+        "selectFeature": "请先选择功能类别",
+        "summary": "主技能：{primarySkill}；上传：{uploadSkill}"
+      },
+      "actions": {
+        "new": "新增",
+        "save": "保存",
+        "saving": "保存中...",
+        "remove": "删除模型",
+        "confirmRemove": "确认删除",
+        "setDefault": "设为默认图床",
+        "showApiKey": "显示 API Key",
+        "hideApiKey": "隐藏 API Key"
+      },
+      "list": {
+        "title": "{type}模型",
+        "count": "{count} 个",
+        "empty": "暂无模型"
+      },
+      "validation": {
+        "nameRequired": "名称不能为空。",
+        "apiKeyRequired": "API Key 不能为空。",
+        "exampleRequired": "示例不能为空。",
+        "required": "请填写模型名称、API Key 和示例。",
+        "saveFailed": "模型保存失败，请重试。"
+      },
+      "feedback": {
+        "loading": "加载中...",
+        "loadError": "配置加载失败。",
+        "saveError": "请填写名称、API Key 和示例后保存。",
+        "saved": "配置已保存。"
+      }
+    }
+  },
+  "Projects": {
+    "newProject": "新增项目",
+    "loading": "加载中...",
+    "empty": "暂无项目",
+    "loadError": "项目列表加载失败",
+    "episodeCount": "{count} 集",
+    "enter": "进入项目",
+    "edit": "编辑项目",
+    "delete": "删除项目",
+    "editTitle": "编辑项目",
+    "save": "保存",
+    "saving": "保存中...",
+    "editSuccess": "项目已更新",
+    "editError": "项目更新失败",
+    "deleteTitle": "删除项目",
+    "deleteDescription": "确定删除“{name}”吗？此操作会删除该项目文件夹，无法撤销。",
+    "deleteCurrentDisabled": "当前选中的项目不能删除",
+    "deleting": "删除中...",
+    "deleteSuccess": "项目已删除",
+    "deleteError": "项目删除失败",
+    "enterSuccess": "已进入{name}",
+    "addScript": {
+      "title": "新建剧本项目",
+      "uploadLabel": "上传剧本文件",
+      "uploadDescription": "仅支持按分集结构拆分的 Markdown 剧本文件，解析成功后会自动填充项目名称。",
+      "uploadHint": "点击或拖拽 .md 文件到此处",
+      "parsing": "正在解析剧本...",
+      "invalidFormat": "请上传 .md 格式的剧本文件",
+      "parseError": "解析失败，未找到分集剧本结构",
+      "viewSample": "查看剧本样本",
+      "projectName": "项目名称",
+      "projectNameDescription": "项目名称会用于本地项目目录的展示信息，上传解析后仍可手动调整。",
+      "projectNamePlaceholder": "输入项目名称",
+      "description": "描述",
+      "descriptionDescription": "补充项目用途、风格或制作备注，便于后续管理和识别。",
+      "descriptionPlaceholder": "例如：用于第一季宣传短片的分镜项目",
+      "recipePack": "配方包",
+      "addRecipe": "添加配方",
+      "customRecipePrompt": "自定义配方：",
+      "recipes": {
+        "cinematic": {
+          "label": "电影感",
+          "prompt": "电影感：高对比光影、真实镜头语言、细腻情绪。"
+        },
+        "anime": {
+          "label": "动画感",
+          "prompt": "动画感：鲜明色彩、夸张表情、清晰轮廓。"
+        },
+        "noir": {
+          "label": "暗调",
+          "prompt": "暗调：低饱和、强阴影、悬疑氛围。"
+        },
+        "portrait": {
+          "label": "人物",
+          "prompt": "人物：突出角色状态、服装细节和表演情绪。"
+        }
+      },
+      "aspectRatio": "比例",
+      "aspectRatioDescription": "选择项目默认画布比例，后续生成分镜和视频资产时会沿用该比例。",
+      "resolution": "清晰度",
+      "resolutionDescription": "选择项目默认输出清晰度，清晰度越高通常会占用更多生成和存储资源。",
+      "cancel": "取消",
+      "confirm": "确定",
+      "creating": "创建中...",
+      "createSuccess": "项目创建成功",
+      "createError": "项目创建失败",
+      "fileMissing": "文件已丢失，请重新上传",
+      "sampleTitle": "剧本样本预览",
+      "sampleLoadError": "样本文件加载失败",
+      "loadSample": "加载样本文件"
+    }
+  },
+  "Locale": {
+    "en": "English",
+    "zh": "简体中文",
+    "zh-TW": "繁體中文",
+    "ja": "日本語",
+    "ru": "Русский",
+    "vi": "Tiếng Việt"
+  }
+}
