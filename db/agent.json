@@ -1,0 +1,18 @@
+{
+  "agents": [
+    {
+      "id": "220a2d72-1eb3-4543-8c9b-76408338b3ef",
+      "name": "opencode",
+      "instructions": "opencode",
+      "icon": "https://opencode.ai/favicon-96x96-v3.png",
+      "description": ""
+    },
+    {
+      "id": "ccec822d-c042-43f3-8f8f-21bc21a477b0",
+      "name": "hermes",
+      "instructions": "hermes",
+      "icon": "https://hermes-agent.nousresearch.com/icon.png?icon.17972d59.png",
+      "description": ""
+    }
+  ]
+}

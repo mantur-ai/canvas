@@ -21,7 +21,7 @@
 /build
 /projects
 
-/db
+/db/config.json
 # Runtime skills are local-only; example skills remain part of the repository.
 /skills/
 !example/skills/
