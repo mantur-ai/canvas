@@ -27,7 +27,11 @@ import {
   buildFeatureUserPrompt,
   PROJECT_ROOT_PROMPT_TOKEN,
 } from "@/lib/chat-prompts";
-import { fetchAgentsCached, fetchConfigCached } from "@/lib/client-data-cache";
+import {
+  fetchAgentsCached,
+  fetchConfigCached,
+  subscribeConfigCache,
+} from "@/lib/client-data-cache";
 import { createProjectSkillContext, deleteProjectSkillContext } from "@/lib/project-api";
 import { useLayoutStore } from "@/store/use-layout-store";
 
@@ -156,6 +160,9 @@ export function GlobalChatDrawer({ open, onClose }: GlobalChatDrawerProps) {
 
   useEffect(() => {
     let active = true;
+    const unsubscribe = subscribeConfigCache((nextConfig) => {
+      if (active) setConfig(nextConfig);
+    });
 
     const loadConfig = async () => {
       try {
@@ -170,6 +177,7 @@ export function GlobalChatDrawer({ open, onClose }: GlobalChatDrawerProps) {
 
     return () => {
       active = false;
+      unsubscribe();
     };
   }, []);
 
@@ -565,16 +573,20 @@ export function GlobalChatDrawer({ open, onClose }: GlobalChatDrawerProps) {
               `Manifest: ${skillContext.manifestPath}`,
               `Use this directory for @-mentioned assets, reference images, and temporary images. Each send gets a unique directory; do not read other temp context directories.`,
               buildSkillContextCleanupInstruction(skillContext.contextDir),
-            ].filter(Boolean).join("\n")
+            ]
+              .filter(Boolean)
+              .join("\n")
           : userText;
 
         try {
           await executeAgentCommand(commandWithContext);
         } finally {
           if (skillContext && currentProject) {
-            await deleteProjectSkillContext(currentProject.id, skillContext.contextDir).catch(() => {
-              // Skill context cleanup is best-effort after the agent process exits.
-            });
+            await deleteProjectSkillContext(currentProject.id, skillContext.contextDir).catch(
+              () => {
+                // Skill context cleanup is best-effort after the agent process exits.
+              },
+            );
             if (activeSkillContextRef.current?.contextDir === skillContext.contextDir) {
               activeSkillContextRef.current = null;
             }
@@ -661,9 +673,14 @@ export function GlobalChatDrawer({ open, onClose }: GlobalChatDrawerProps) {
                 inputLabel={t("inputLabel")}
                 addAttachmentLabel={canvasT("chatWindow.addAttachment")}
                 attachmentFallbackLabel={(index, file) =>
-                  canvasT(file.type.startsWith("image/") ? "chatWindow.imageFallback" : "chatWindow.fileFallback", {
-                    index,
-                  })
+                  canvasT(
+                    file.type.startsWith("image/")
+                      ? "chatWindow.imageFallback"
+                      : "chatWindow.fileFallback",
+                    {
+                      index,
+                    },
+                  )
                 }
                 attachmentListLabel={canvasT("chatWindow.attachmentList")}
                 removeAttachmentLabel={canvasT("chatWindow.removeAttachment")}

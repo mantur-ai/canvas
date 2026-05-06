@@ -508,7 +508,7 @@ export function AssetCreateDialog({
                     onChange={(event) => setPrompt(event.target.value)}
                     disabled={isLibraryMode}
                     placeholder={t("form.promptPlaceholder")}
-                    className="min-h-24 resize-none rounded-md border-border bg-input/30 text-xs text-foreground placeholder:text-muted-foreground"
+                    className="h-24 resize-none rounded-md border-border bg-input/30 text-xs text-foreground placeholder:text-muted-foreground"
                   />
                 </div>
               </div>

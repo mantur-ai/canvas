@@ -24,7 +24,7 @@ import { StoryboardImageNode } from "@/components/canvas/nodes/storyboard-image-
 import { StoryboardListNode } from "@/components/canvas/nodes/storyboard-list-node";
 import { StoryboardVideoNode } from "@/components/canvas/nodes/storyboard-video-node";
 import { useSilentAgentCommand } from "@/components/canvas/use-silent-agent-command";
-import { fetchConfigCached } from "@/lib/client-data-cache";
+import { fetchConfigCached, subscribeConfigCache } from "@/lib/client-data-cache";
 import { DEFAULT_WORKFLOW_SKILLS, type AppConfig } from "@/lib/config-schema";
 import { flowStateSchema, type FlowState } from "@/lib/flow-schema";
 import {
@@ -414,6 +414,9 @@ function CanvasWorkspaceInner() {
 
   useEffect(() => {
     let active = true;
+    const unsubscribe = subscribeConfigCache((nextConfig) => {
+      if (active) setConfig(nextConfig);
+    });
 
     const loadConfig = async () => {
       try {
@@ -428,6 +431,7 @@ function CanvasWorkspaceInner() {
 
     return () => {
       active = false;
+      unsubscribe();
     };
   }, []);
 
@@ -609,9 +613,9 @@ function CanvasWorkspaceInner() {
                           : "storyboard-image-generate",
                     mediaId: targetSelection.item.id,
                     mediaName: targetSelection.item.name,
-                        mediaType: targetSelection.item.type,
-                        scope: "canvas-grid",
-                      });
+                    mediaType: targetSelection.item.type,
+                    scope: "canvas-grid",
+                  });
                   agentRunCompleted = true;
 
                   if (targetSelection.item.type === "image") {

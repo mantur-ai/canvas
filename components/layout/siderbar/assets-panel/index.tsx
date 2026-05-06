@@ -2,16 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import {
-  Eye,
-  ImageIcon,
-  Info,
-  ListTree,
-  Loader2,
-  Plus,
-  Search,
-  Trash2,
-} from "lucide-react";
+import { Eye, ImageIcon, Info, ListTree, Loader2, Plus, Search, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 
@@ -34,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { fetchConfigCached } from "@/lib/client-data-cache";
+import { fetchConfigCached, subscribeConfigCache } from "@/lib/client-data-cache";
 import { DEFAULT_WORKFLOW_SKILLS, type AppConfig } from "@/lib/config-schema";
 import { getSafeMediaSource } from "@/lib/media-src";
 import {
@@ -287,6 +278,9 @@ export function AssetsPanel() {
 
   useEffect(() => {
     let active = true;
+    const unsubscribe = subscribeConfigCache((nextConfig) => {
+      if (active) setConfig(nextConfig);
+    });
 
     async function loadConfig() {
       try {
@@ -301,6 +295,7 @@ export function AssetsPanel() {
 
     return () => {
       active = false;
+      unsubscribe();
     };
   }, []);
 
@@ -591,9 +586,7 @@ export function AssetsPanel() {
                         ? tCanvas(`mediaGrid.${commandStatus}`)
                         : "";
                       const imageSource = getSafeMediaSource(asset.url);
-                      const canPreviewAsset = Boolean(
-                        imageSource && !failedImageIds.has(asset.id),
-                      );
+                      const canPreviewAsset = Boolean(imageSource && !failedImageIds.has(asset.id));
                       const isHoverPreviewVisible =
                         canPreviewAsset && hoveredAssetPreview?.assetId === asset.id;
                       const previewAbove = hoveredAssetPreview
@@ -757,7 +750,7 @@ export function AssetsPanel() {
                                 </span>
                               </div>
                             )}
-                           
+
                             <div
                               className={cn(
                                 "pointer-events-none absolute inset-0 z-40 rounded-md ring-1 ring-inset",

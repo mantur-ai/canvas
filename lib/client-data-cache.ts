@@ -13,6 +13,7 @@ let agentsCache: AgentRecord[] | null = null;
 let agentsRequest: Promise<AgentRecord[]> | null = null;
 let configCache: AppConfig | null = null;
 let configRequest: Promise<AppConfig | null> | null = null;
+const configListeners = new Set<(config: AppConfig) => void>();
 
 export async function fetchAgentsCached(): Promise<AgentRecord[]> {
   if (agentsCache) return agentsCache;
@@ -70,4 +71,13 @@ export async function fetchConfigCached(): Promise<AppConfig | null> {
 export function setConfigCache(config: AppConfig) {
   configCache = config;
   configRequest = null;
+  configListeners.forEach((listener) => listener(config));
+}
+
+export function subscribeConfigCache(listener: (config: AppConfig) => void) {
+  configListeners.add(listener);
+
+  return () => {
+    configListeners.delete(listener);
+  };
 }
