@@ -2,7 +2,7 @@
 
 [English](./README.md)
 
-官网：[mantur.cn](https://mantur.cn)
+官网：[https://mantur.cn](https://mantur.cn)
 
 Mantur Canvas 是面向剧本分镜、素材管理和 AI 生成工作流的本地创作画布。它帮助创作者把剧本整理为结构化项目、剧集、分镜条目、可复用素材、生成图片、生成视频，以及可进入剪辑流程的媒体内容。
 
@@ -53,23 +53,23 @@ cd canvas
 npm install
 ```
 
-将 `exmple` 中的示例数据库配置和技能复制到项目根目录：
+将 `example` 中的示例数据库配置和技能复制到项目根目录：
 
 ```bash
 mkdir -p db skills
-cp -R exmple/db/. db/
-cp -R exmple/skills/. skills/
+cp -R example/db/. db/
+cp -R example/skills/. skills/
 ```
 
 ## 小白一键启动
 
-如果你不确定本机是否安装了 Node.js，可以直接运行：
+如果已经安装 Node.js 20 或更高版本，可以直接运行：
 
 ```bash
-bash scripts/quick-start.sh
+npm run quick-start
 ```
 
-脚本会自动检查 Node.js 版本；如果没有安装 Node.js，或版本低于 20，会先通过 Volta 安装 Node.js 20，然后执行 `npm install` 并启动开发服务。
+脚本会自动检查 Node.js 版本，安装依赖，补齐本地示例文件，并启动开发服务。Windows 用户不需要额外安装 Bash。
 
 ## 开发模式启动
 
@@ -84,6 +84,33 @@ npm run dev
 ```bash
 npm run build
 npm run start
+```
+
+## 使用 PM2 运行
+
+在服务器上先安装一次 PM2：
+
+```bash
+npm install -g pm2
+```
+
+使用 PM2 启动前先构建应用：
+
+```bash
+npm install
+npm run build
+npm run pm2:start
+```
+
+PM2 配置位于 `ecosystem.config.cjs`，生产应用默认监听 `0.0.0.0:3000`。
+
+常用 PM2 命令：
+
+```bash
+npm run pm2:reload
+npm run pm2:stop
+pm2 logs mantur-canvas
+pm2 save
 ```
 
 ## 首次使用
@@ -114,6 +141,9 @@ npm run start
 - `npm run quick-start`：检查环境、安装依赖并启动开发服务器
 - `npm run build`：构建生产版本
 - `npm run start`：启动生产服务器
+- `npm run pm2:start`：使用 PM2 启动生产服务器
+- `npm run pm2:reload`：新构建或环境变量变更后重载 PM2 进程
+- `npm run pm2:stop`：停止 PM2 进程
 - `npm run lint`：运行 Oxlint
 - `npm run format`：使用 Oxfmt 格式化文件
 - `npm run format:check`：检查格式

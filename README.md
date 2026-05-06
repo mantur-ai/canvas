@@ -2,7 +2,7 @@
 
 [中文文档](./README.zh-CN.md)
 
-Official website: [mantur.ai](https://mantur.ai)
+Official website: [https://mantur.ai](https://mantur.ai)
 
 Mantur Canvas is a local creative canvas for script storyboards, asset management, and AI generation workflows. It helps creators turn scripts into structured episodes, storyboard items, reusable assets, generated images, generated videos, and timeline-ready media.
 
@@ -57,19 +57,19 @@ Copy the example database configuration and skills into the project root:
 
 ```bash
 mkdir -p db skills
-cp -R exmple/db/. db/
-cp -R exmple/skills/. skills/
+cp -R example/db/. db/
+cp -R example/skills/. skills/
 ```
 
 ## Beginner Quick Start
 
-If you are not sure whether Node.js is installed, run:
+If Node.js 20 or later is installed, run:
 
 ```bash
-bash scripts/quick-start.sh
+npm run quick-start
 ```
 
-The script checks the Node.js version. If Node.js is missing or older than version 20, it installs Node.js 20 with Volta, then runs `npm install` and starts the development server.
+The script checks the Node.js version, installs dependencies, prepares local example files, and starts the development server. Windows users do not need Bash.
 
 ## Start In Development
 
@@ -84,6 +84,33 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ```bash
 npm run build
 npm run start
+```
+
+## Run With PM2
+
+Install PM2 once on the server:
+
+```bash
+npm install -g pm2
+```
+
+Build the app before starting it with PM2:
+
+```bash
+npm install
+npm run build
+npm run pm2:start
+```
+
+The PM2 config uses `ecosystem.config.cjs` and starts the production app on `0.0.0.0:3000`.
+
+Common PM2 commands:
+
+```bash
+npm run pm2:reload
+npm run pm2:stop
+pm2 logs mantur-canvas
+pm2 save
 ```
 
 ## First-Time Setup
@@ -114,6 +141,9 @@ These paths may contain private user data, API configuration, prompts, generated
 - `npm run quick-start`: check the environment, install dependencies, and start the development server
 - `npm run build`: build the production app
 - `npm run start`: start the production server
+- `npm run pm2:start`: start the production server with PM2
+- `npm run pm2:reload`: reload the PM2 process after a new build or environment change
+- `npm run pm2:stop`: stop the PM2 process
 - `npm run lint`: run Oxlint
 - `npm run format`: format files with Oxfmt
 - `npm run format:check`: check formatting

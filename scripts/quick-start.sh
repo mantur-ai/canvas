@@ -157,10 +157,10 @@ copy_missing_example_dir() {
 }
 
 initialize_example_files() {
-  log "Preparing local db and skills from exmple..."
+  log "Preparing local db and skills from example..."
   mkdir -p db skills
-  copy_missing_example_dir "exmple/db" "db"
-  copy_missing_example_dir "exmple/skills" "skills"
+  copy_missing_example_dir "example/db" "db"
+  copy_missing_example_dir "example/skills" "skills"
 }
 
 main() {
