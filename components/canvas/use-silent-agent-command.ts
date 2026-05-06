@@ -52,6 +52,99 @@ type AsyncTaskEventPayload = {
   status?: string;
 };
 
+type AsyncTaskEventSubscription = {
+  closeTimer: ReturnType<typeof setTimeout> | null;
+  refCount: number;
+  source: EventSource;
+};
+
+const asyncTaskEventSubscriptions = new Map<
+  string,
+  AsyncTaskEventSubscription
+>();
+const ASYNC_TASK_EVENT_CLOSE_DELAY_MS = 500;
+
+async function handleAsyncTaskEvent(
+  projectId: string,
+  payload: AsyncTaskEventPayload,
+) {
+  if (!payload.mediaId || !payload.mediaType) return;
+
+  const { setCommandStatus, updateImageAsset, updateVideoAsset } =
+    useCanvasStore.getState();
+
+  if (payload.status !== "succeeded") {
+    setCommandStatus(payload.mediaId, "error");
+    return;
+  }
+
+  if (payload.mediaType === "video") {
+    const videos = await fetchProjectVideos(projectId).catch(() => []);
+    const video = videos.find((item) => item.id === payload.mediaId);
+    if (video) updateVideoAsset(video);
+    setCommandStatus(payload.mediaId, video?.url.trim() ? "success" : "error");
+    return;
+  }
+
+  const images = await fetchProjectImages(projectId).catch(() => []);
+  const image = images.find((item) => item.id === payload.mediaId);
+  if (image) updateImageAsset(image);
+  setCommandStatus(payload.mediaId, image?.url.trim() ? "success" : "error");
+}
+
+function retainAsyncTaskEventSource(projectId: string) {
+  const existing = asyncTaskEventSubscriptions.get(projectId);
+  if (existing) {
+    if (existing.closeTimer) {
+      clearTimeout(existing.closeTimer);
+      existing.closeTimer = null;
+    }
+    existing.refCount += 1;
+    return () => releaseAsyncTaskEventSource(projectId);
+  }
+
+  const source = new EventSource(
+    `/api/projects/${encodeURIComponent(projectId)}/async-tasks/events`,
+  );
+  const handleMessage = (event: Event) => {
+    void (async () => {
+      const messageEvent = event as MessageEvent<string>;
+      let payload: AsyncTaskEventPayload;
+      try {
+        payload = JSON.parse(messageEvent.data) as AsyncTaskEventPayload;
+      } catch {
+        return;
+      }
+
+      await handleAsyncTaskEvent(projectId, payload);
+    })();
+  };
+
+  source.addEventListener("async-task", handleMessage);
+  asyncTaskEventSubscriptions.set(projectId, {
+    closeTimer: null,
+    refCount: 1,
+    source,
+  });
+
+  return () => releaseAsyncTaskEventSource(projectId);
+}
+
+function releaseAsyncTaskEventSource(projectId: string) {
+  const subscription = asyncTaskEventSubscriptions.get(projectId);
+  if (!subscription) return;
+
+  subscription.refCount -= 1;
+  if (subscription.refCount > 0 || subscription.closeTimer) return;
+
+  subscription.closeTimer = setTimeout(() => {
+    const latest = asyncTaskEventSubscriptions.get(projectId);
+    if (!latest || latest.refCount > 0) return;
+    latest.source.close();
+    asyncTaskEventSubscriptions.delete(projectId);
+  }, ASYNC_TASK_EVENT_CLOSE_DELAY_MS);
+}
+
 function formatAttachmentContext(
   projectId: string,
   payload: ChatWindowSubmitPayload,
@@ -226,8 +319,6 @@ export function useSilentAgentCommand() {
     (state) => state.clearCommandStatus,
   );
   const setCommandStatus = useCanvasStore((state) => state.setCommandStatus);
-  const updateImageAsset = useCanvasStore((state) => state.updateImageAsset);
-  const updateVideoAsset = useCanvasStore((state) => state.updateVideoAsset);
   const finishSidebarLoading = useLayoutStore(
     (state) => state.finishSidebarLoading,
   );
@@ -268,54 +359,8 @@ export function useSilentAgentCommand() {
   useEffect(() => {
     if (!currentProject) return undefined;
 
-    const projectId = currentProject.id;
-    const source = new EventSource(
-      `/api/projects/${encodeURIComponent(projectId)}/async-tasks/events`,
-    );
-    const handleAsyncTask = (event: Event) => {
-      void (async () => {
-        const messageEvent = event as MessageEvent<string>;
-        let payload: AsyncTaskEventPayload;
-        try {
-          payload = JSON.parse(messageEvent.data) as AsyncTaskEventPayload;
-        } catch {
-          return;
-        }
-
-        if (!payload.mediaId || !payload.mediaType) return;
-        if (payload.status !== "succeeded") {
-          setCommandStatus(payload.mediaId, "error");
-          return;
-        }
-
-        if (payload.mediaType === "video") {
-          const videos = await fetchProjectVideos(projectId).catch(() => []);
-          const video = videos.find((item) => item.id === payload.mediaId);
-          if (video) updateVideoAsset(video);
-          setCommandStatus(
-            payload.mediaId,
-            video?.url.trim() ? "success" : "error",
-          );
-          return;
-        }
-
-        const images = await fetchProjectImages(projectId).catch(() => []);
-        const image = images.find((item) => item.id === payload.mediaId);
-        if (image) updateImageAsset(image);
-        setCommandStatus(
-          payload.mediaId,
-          image?.url.trim() ? "success" : "error",
-        );
-      })();
-    };
-
-    source.addEventListener("async-task", handleAsyncTask);
-
-    return () => {
-      source.removeEventListener("async-task", handleAsyncTask);
-      source.close();
-    };
-  }, [currentProject, setCommandStatus, updateImageAsset, updateVideoAsset]);
+    return retainAsyncTaskEventSource(currentProject.id);
+  }, [currentProject?.id]);
 
   useEffect(() => {
     let active = true;
