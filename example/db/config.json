@@ -45,7 +45,7 @@
       "id": "imageBed-5875e695-88fc-4066-9a7b-af7e18405d1d",
       "name": "imgbb",
       "apiKey": "your-api-key",
-      "example": "1",
+      "example": "curl --location --request POST \"https://api.imgbb.com/1/upload?expiration=0&key=YOUR_CLIENT_API_KEY\" --form \"image=R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7\"",
       "isDefault": true
     }
   ],
