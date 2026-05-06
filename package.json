@@ -12,7 +12,6 @@
   },
   "homepage": "https://github.com/mantur-ai/canvas#readme",
   "scripts": {
-    "quick-start": "node scripts/quick-start.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

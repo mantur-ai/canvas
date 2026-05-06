@@ -63,13 +63,21 @@ cp -R example/skills/. skills/
 
 ## 小白一键启动
 
-如果已经安装 Node.js 20 或更高版本，可以直接运行：
+直接使用系统启动脚本。即使本机还没有 Node.js，脚本也会先安装 Node.js。
 
-```bash
-npm run quick-start
+Windows：
+
+```bat
+scripts\quick-start.cmd
 ```
 
-脚本会自动检查 Node.js 版本，安装依赖，补齐本地示例文件，并启动开发服务。Windows 用户不需要额外安装 Bash。
+macOS 或 Linux：
+
+```bash
+bash scripts/quick-start.sh
+```
+
+一键启动脚本会检查 Node.js 版本、安装依赖、补齐本地示例文件，并启动开发服务。
 
 ## 开发模式启动
 
@@ -138,7 +146,7 @@ pm2 save
 ## 常用脚本
 
 - `npm run dev`：启动开发服务器
-- `npm run quick-start`：检查环境、安装依赖并启动开发服务器
+- `npm run quick-start`：在已安装 Node.js 时检查环境、安装依赖并启动开发服务器
 - `npm run build`：构建生产版本
 - `npm run start`：启动生产服务器
 - `npm run pm2:start`：使用 PM2 启动生产服务器

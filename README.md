@@ -63,13 +63,21 @@ cp -R example/skills/. skills/
 
 ## Beginner Quick Start
 
-If Node.js 20 or later is installed, run:
+Use the OS quick-start script. It can install Node.js first when Node.js is not available.
 
-```bash
-npm run quick-start
+Windows:
+
+```bat
+scripts\quick-start.cmd
 ```
 
-The script checks the Node.js version, installs dependencies, prepares local example files, and starts the development server. Windows users do not need Bash.
+macOS or Linux:
+
+```bash
+bash scripts/quick-start.sh
+```
+
+The quick-start script checks the Node.js version, installs dependencies, prepares local example files, and starts the development server.
 
 ## Start In Development
 
@@ -138,7 +146,7 @@ These paths may contain private user data, API configuration, prompts, generated
 ## Scripts
 
 - `npm run dev`: start the development server
-- `npm run quick-start`: check the environment, install dependencies, and start the development server
+- `npm run quick-start`: check the environment, install dependencies, and start the development server when Node.js is already installed
 - `npm run build`: build the production app
 - `npm run start`: start the production server
 - `npm run pm2:start`: start the production server with PM2
