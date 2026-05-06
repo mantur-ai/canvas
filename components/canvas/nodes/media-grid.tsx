@@ -12,7 +12,7 @@ import {
   Video,
 } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import { AssetCreateDialog } from "@/components/assets/asset-create-dialog";
@@ -45,15 +45,15 @@ import { cn } from "@/lib/utils";
 import { useCanvasStore, type MediaItem } from "@/store/use-canvas-store";
 
 const MEDIA_GRID_SCROLL_AREA_CLASS =
-  "nodrag nowheel h-[16.625rem] overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-xl transition-[border-color,box-shadow,transform] duration-200";
+  "nodrag nowheel h-[16.625rem] w-full max-w-full overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-xl transition-[border-color,box-shadow,transform] duration-200";
 const MEDIA_GRID_ACTIVE_CLASS =
   "border-border shadow-[0_0_34px_hsl(var(--primary)/0.48),0_20px_60px_rgba(0,0,0,0.62)] translate-y-[-1px]";
-const MEDIA_GRID_SCROLL_CONTENT_CLASS = "grid grid-cols-2 gap-2 p-2";
+const MEDIA_GRID_SCROLL_CONTENT_CLASS = "grid w-full min-w-0 max-w-full grid-cols-2 gap-2 p-2 pr-5";
 const MEDIA_GRID_SCROLL_BAR_CLASS = "nodrag data-vertical:w-4 data-horizontal:h-4 p-1";
 const MEDIA_GRID_SCROLL_THUMB_CLASS =
   "bg-muted-foreground/55 transition-colors hover:bg-muted-foreground/80";
 // Keep tile corners modest so ReactFlow zoom does not make thumbnails look over-rounded.
-const MEDIA_TILE_RADIUS_CLASS = "rounded-[6px] overflow-hidden";
+const MEDIA_TILE_RADIUS_CLASS = "rounded-[6px]";
 
 function IconButtonTooltip({ children, label }: { children: ReactNode; label: string }) {
   return (
@@ -74,6 +74,319 @@ function getMediaPosterSource(item: MediaItem) {
     getSafeMediaSource(item.coverUrl) ??
     getSafeMediaSource(item.poster) ??
     undefined
+  );
+}
+
+function MediaTileActions({
+  canPreview,
+  item,
+  onDelete,
+  onLibrary,
+  onPreview,
+  onPreviewSuppressedChange,
+  onUploadClick,
+}: {
+  canPreview: boolean;
+  item: MediaItem;
+  onDelete: (item: MediaItem) => void;
+  onLibrary?: (item: MediaItem) => void;
+  onPreview: (item: MediaItem) => void;
+  onPreviewSuppressedChange: (suppressed: boolean) => void;
+  onUploadClick: () => void;
+}) {
+  const t = useTranslations("Canvas");
+
+  return (
+    <div
+      className="absolute inset-x-1 top-1 z-30 flex items-center justify-between opacity-0 transition-opacity group-hover:opacity-100"
+      onMouseEnter={() => onPreviewSuppressedChange(true)}
+      onMouseLeave={() => onPreviewSuppressedChange(false)}
+    >
+      <div className="flex gap-1 rounded-md bg-background/80 p-0.5 shadow-sm backdrop-blur">
+        <TooltipProvider delayDuration={200}>
+          <IconButtonTooltip label={t("mediaGrid.upload")}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              aria-label={t("mediaGrid.upload")}
+              className="size-5.5 text-foreground hover:bg-accent"
+              onClick={(event) => {
+                event.stopPropagation();
+                onUploadClick();
+              }}
+            >
+              <Upload className="size-3.5" />
+            </Button>
+          </IconButtonTooltip>
+        </TooltipProvider>
+        {canPreview ? (
+          <TooltipProvider delayDuration={200}>
+            <IconButtonTooltip label={t("mediaGrid.preview")}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                aria-label={t("mediaGrid.preview")}
+                className="size-5.5 text-primary hover:bg-primary/15"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onPreview(item);
+                }}
+              >
+                <Eye className="size-3.5" />
+              </Button>
+            </IconButtonTooltip>
+          </TooltipProvider>
+        ) : null}
+      </div>
+      <div className="flex gap-1 rounded-md bg-background/80 p-0.5 shadow-sm backdrop-blur">
+        {item.type === "image" && onLibrary ? (
+          <TooltipProvider delayDuration={200}>
+            <IconButtonTooltip label={t("mediaGrid.addToLibrary")}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                aria-label={t("mediaGrid.addToLibrary")}
+                className="size-5.5 text-foreground hover:bg-accent"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onLibrary(item);
+                }}
+              >
+                <PackagePlus className="size-3.5" />
+              </Button>
+            </IconButtonTooltip>
+          </TooltipProvider>
+        ) : null}
+        <TooltipProvider delayDuration={200}>
+          <IconButtonTooltip label={t("mediaGrid.delete")}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              aria-label={t("mediaGrid.delete")}
+              className="size-5.5 text-foreground hover:bg-destructive/15 hover:text-destructive"
+              onClick={(event) => {
+                event.stopPropagation();
+                onDelete(item);
+              }}
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+          </IconButtonTooltip>
+        </TooltipProvider>
+      </div>
+    </div>
+  );
+}
+
+function MediaUploadInput({
+  item,
+  onUpload,
+  fileInputRef,
+}: {
+  item: MediaItem;
+  onUpload: (item: MediaItem, file: File) => void;
+  fileInputRef: RefObject<HTMLInputElement | null>;
+}) {
+  return (
+    <input
+      ref={fileInputRef}
+      type="file"
+      accept={
+        item.type === "video"
+          ? "video/mp4,video/webm,video/quicktime"
+          : "image/png,image/jpeg,image/webp,image/gif"
+      }
+      className="hidden"
+      onChange={(event) => {
+        const file = event.target.files?.[0];
+        event.currentTarget.value = "";
+        if (file) onUpload(item, file);
+      }}
+    />
+  );
+}
+
+function VideoSelectButton({
+  isSelectedVideo,
+  item,
+  onSelectVideo,
+}: {
+  isSelectedVideo: boolean;
+  item: MediaItem;
+  onSelectVideo: (item: MediaItem) => void;
+}) {
+  const t = useTranslations("Canvas");
+  const label = t("mediaGrid.selectVideo", { name: item.name || item.id });
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <IconButtonTooltip label={label}>
+        <button
+          type="button"
+          aria-label={label}
+          aria-pressed={isSelectedVideo}
+          className={cn(
+            "absolute bottom-1 left-1 z-30 flex size-6 items-center justify-center rounded-md border bg-background/90 shadow-sm transition-colors",
+            isSelectedVideo
+              ? "border-primary text-primary"
+              : "border-border text-muted-foreground hover:border-primary hover:text-primary",
+          )}
+          onClick={(event) => {
+            event.stopPropagation();
+            onSelectVideo(item);
+          }}
+        >
+          <Star
+            className={cn(
+              "size-3.5 transition-colors",
+              isSelectedVideo ? "fill-primary text-primary" : "fill-transparent",
+            )}
+          />
+        </button>
+      </IconButtonTooltip>
+    </TooltipProvider>
+  );
+}
+
+function MediaFallbackContent({
+  isLoading,
+  item,
+  statusLabel,
+}: {
+  isLoading: boolean;
+  item: MediaItem;
+  statusLabel: string;
+}) {
+  const t = useTranslations("Canvas");
+
+  return (
+    <div className="flex min-w-0 max-w-full flex-col items-center gap-1 px-1 text-muted-foreground">
+      {isLoading ? (
+        <Loader2 className="size-5 animate-spin" />
+      ) : item.type === "video" ? (
+        <Video className="size-5" />
+      ) : (
+        <ImageIcon className="size-5" />
+      )}
+      <span className="max-w-full truncate text-xs">{statusLabel || t("mediaGrid.pending")}</span>
+    </div>
+  );
+}
+
+function MediaLoadingOverlay({ statusLabel }: { statusLabel: string }) {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-1 bg-background/70 text-muted-foreground backdrop-blur-[1px]">
+      <Loader2 className="size-5 animate-spin" />
+      <span className="text-xs">{statusLabel}</span>
+    </div>
+  );
+}
+
+function MediaVisualViewport({
+  canSelectVideo,
+  isError,
+  isLoading,
+  isSelectedVideo,
+  item,
+  onImageError,
+  onSelectVideo,
+  statusLabel,
+  visualSource,
+}: {
+  canSelectVideo: boolean;
+  isError: boolean;
+  isLoading: boolean;
+  isSelectedVideo: boolean;
+  item: MediaItem;
+  onImageError: () => void;
+  onSelectVideo?: (item: MediaItem) => void;
+  statusLabel: string;
+  visualSource?: string | null;
+}) {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
+      {canSelectVideo && onSelectVideo ? (
+        <VideoSelectButton
+          isSelectedVideo={isSelectedVideo}
+          item={item}
+          onSelectVideo={onSelectVideo}
+        />
+      ) : null}
+      {visualSource && !isError ? (
+        // Project media URLs are data from the project JSON and remain serializable in flow nodes.
+        <Image
+          src={visualSource}
+          alt={item.name}
+          fill
+          sizes="108px"
+          className="object-cover"
+          unoptimized
+          onError={onImageError}
+        />
+      ) : (
+        <MediaFallbackContent isLoading={isLoading} item={item} statusLabel={statusLabel} />
+      )}
+      {isLoading && visualSource && !isError ? (
+        <MediaLoadingOverlay statusLabel={statusLabel} />
+      ) : null}
+    </div>
+  );
+}
+
+function MediaNameBar({ name }: { name: string }) {
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex h-5 max-w-full min-w-0 items-center justify-center overflow-hidden rounded-b-[inherit] bg-background/30 px-1 pb-0.5 pt-px backdrop-blur-md">
+      <span className="block max-w-full truncate text-[10px] leading-none">{name}</span>
+    </div>
+  );
+}
+
+function MediaTileSelectionLayers({
+  hasActiveSelection,
+  isSelected,
+}: {
+  hasActiveSelection: boolean;
+  isSelected: boolean;
+}) {
+  return (
+    <>
+      {hasActiveSelection && !isSelected ? (
+        <div
+          className="pointer-events-none absolute inset-0 z-[5] bg-black/55 backdrop-blur-[1px] rounded-sm"
+          aria-hidden="true"
+        />
+      ) : null}
+      <div
+        className="pointer-events-none absolute inset-0 z-[25] rounded-[inherit] border border-border"
+        aria-hidden="true"
+      />
+    </>
+  );
+}
+
+function MediaTileSelectButton({
+  item,
+  onSelect,
+}: {
+  item: MediaItem;
+  onSelect: (item: MediaItem, anchorRect: DOMRect) => void;
+}) {
+  const t = useTranslations("Canvas");
+
+  return (
+    <button
+      type="button"
+      aria-label={t("mediaGrid.select", { name: item.name || item.id })}
+      className="absolute inset-0 z-10 cursor-pointer bg-transparent rounded-2xl"
+      onClick={(event) => {
+        event.stopPropagation();
+        onSelect(item, event.currentTarget.getBoundingClientRect());
+      }}
+    />
   );
 }
 
@@ -108,6 +421,7 @@ function MediaPreview({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [failed, setFailed] = useState(false);
   const [previewAnchorRect, setPreviewAnchorRect] = useState<DOMRect | null>(null);
+  const [previewSuppressed, setPreviewSuppressed] = useState(false);
   const previewSource = getMediaPreviewSource(item);
   const posterSource = getMediaPosterSource(item);
   const visualSource = item.type === "video" ? posterSource : previewSource;
@@ -154,15 +468,19 @@ function MediaPreview({
   return (
     <div
       data-selected-media-grid-item={isSelected ? "true" : undefined}
-      className={`group relative text-left ${MEDIA_TILE_RADIUS_CLASS}`}
+      className={`group relative min-w-0 max-w-full text-left ${MEDIA_TILE_RADIUS_CLASS}`}
       onMouseEnter={(event) => setPreviewAnchorRect(event.currentTarget.getBoundingClientRect())}
       onMouseLeave={() => setPreviewAnchorRect(null)}
     >
-      {item.type === "image" && canPreview && previewAnchorRect && typeof document !== "undefined"
+      {item.type === "image" &&
+      canPreview &&
+      previewAnchorRect &&
+      !previewSuppressed &&
+      typeof document !== "undefined"
         ? createPortal(
             <div
               className={cn(
-                "pointer-events-none fixed z-2147483647 -translate-x-1/2",
+                "pointer-events-none fixed z-[2147483647] -translate-x-1/2",
                 previewAbove ? "-translate-y-full" : "",
               )}
               style={{
@@ -182,182 +500,35 @@ function MediaPreview({
         : null}
       <div
         className={cn(
-          "relative flex aspect-square items-center justify-center overflow-hidden border border-border ring-inset transition-colors duration-150 group-hover:border-primary group-hover:ring-1 group-hover:ring-primary",
+          "relative flex aspect-square flex-col overflow-hidden outline outline-0 outline-offset-1 transition-[outline-color,outline-width] duration-150 group-hover:outline-2 group-hover:outline-primary",
+          isSelected ? "outline-2 outline-primary" : "outline-transparent",
           MEDIA_TILE_RADIUS_CLASS,
         )}
       >
-        <div className="absolute inset-x-1 top-1 z-30 flex items-center justify-between opacity-0 transition-opacity group-hover:opacity-100">
-          <div className="flex gap-1 rounded-md bg-background/80 p-0.5 shadow-sm backdrop-blur">
-            <TooltipProvider delayDuration={200}>
-              <IconButtonTooltip label={t("mediaGrid.upload")}>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label={t("mediaGrid.upload")}
-                  className="size-5.5 text-foreground hover:bg-accent"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    fileInputRef.current?.click();
-                  }}
-                >
-                  <Upload className="size-3.5" />
-                </Button>
-              </IconButtonTooltip>
-            </TooltipProvider>
-            {canPreview ? (
-              <TooltipProvider delayDuration={200}>
-                <IconButtonTooltip label={t("mediaGrid.preview")}>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    aria-label={t("mediaGrid.preview")}
-                    className="size-5.5 text-primary hover:bg-primary/15"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onPreview(item);
-                    }}
-                  >
-                    <Eye className="size-3.5" />
-                  </Button>
-                </IconButtonTooltip>
-              </TooltipProvider>
-            ) : null}
-          </div>
-          <div className="flex gap-1 rounded-md bg-background/80 p-0.5 shadow-sm backdrop-blur">
-            {item.type === "image" && onLibrary ? (
-              <TooltipProvider delayDuration={200}>
-                <IconButtonTooltip label={t("mediaGrid.addToLibrary")}>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    aria-label={t("mediaGrid.addToLibrary")}
-                    className="size-5.5 text-foreground hover:bg-accent"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onLibrary(item);
-                    }}
-                  >
-                    <PackagePlus className="size-3.5" />
-                  </Button>
-                </IconButtonTooltip>
-              </TooltipProvider>
-            ) : null}
-            <TooltipProvider delayDuration={200}>
-              <IconButtonTooltip label={t("mediaGrid.delete")}>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label={t("mediaGrid.delete")}
-                  className="size-5.5 text-foreground hover:bg-destructive/15 hover:text-destructive"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onDelete(item);
-                  }}
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              </IconButtonTooltip>
-            </TooltipProvider>
-          </div>
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={
-            item.type === "video"
-              ? "video/mp4,video/webm,video/quicktime"
-              : "image/png,image/jpeg,image/webp,image/gif"
-          }
-          className="hidden"
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.currentTarget.value = "";
-            if (file) onUpload(item, file);
-          }}
+        <MediaTileActions
+          canPreview={canPreview}
+          item={item}
+          onDelete={onDelete}
+          onLibrary={onLibrary}
+          onPreview={onPreview}
+          onPreviewSuppressedChange={setPreviewSuppressed}
+          onUploadClick={() => fileInputRef.current?.click()}
         />
-        {canSelectVideo ? (
-          <TooltipProvider delayDuration={200}>
-            <IconButtonTooltip label={t("mediaGrid.selectVideo", { name: item.name || item.id })}>
-              <button
-                type="button"
-                aria-label={t("mediaGrid.selectVideo", { name: item.name || item.id })}
-                aria-pressed={isSelectedVideo}
-                className={cn(
-                  "absolute bottom-1 left-1 z-30 flex size-6 items-center justify-center rounded-md border bg-background/90 shadow-sm transition-colors",
-                  isSelectedVideo
-                    ? "border-primary text-primary"
-                    : "border-border text-muted-foreground hover:border-primary hover:text-primary",
-                )}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onSelectVideo?.(item);
-                }}
-              >
-                <Star
-                  className={cn(
-                    "size-3.5 transition-colors",
-                    isSelectedVideo ? "fill-primary text-primary" : "fill-transparent",
-                  )}
-                />
-              </button>
-            </IconButtonTooltip>
-          </TooltipProvider>
-        ) : null}
-        {visualSource && !isError ? (
-          // Project media URLs are data from the project JSON and remain serializable in flow nodes.
-          <Image
-            src={visualSource}
-            alt={item.name}
-            fill
-            sizes="108px"
-            className="object-cover rounded-sm"
-            unoptimized
-            onError={() => setFailed(true)}
-          />
-        ) : (
-          <div className="flex flex-col items-center gap-1 text-muted-foreground">
-            {isLoading ? (
-              <Loader2 className="size-5 animate-spin" />
-            ) : item.type === "video" ? (
-              <Video className="size-5" />
-            ) : (
-              <ImageIcon className="size-5" />
-            )}
-            <span className="text-xs">{statusLabel || t("mediaGrid.pending")}</span>
-          </div>
-        )}
-        {isLoading && visualSource && !isError ? (
-          <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-1 bg-background/70 text-muted-foreground backdrop-blur-[1px]">
-            <Loader2 className="size-5 animate-spin" />
-            <span className="text-xs">{statusLabel}</span>
-          </div>
-        ) : null}
-
-        {showName ? (
-          <div className="pointer-events-none absolute bottom-0 left-0 z-10 mt-1 flex w-full items-center justify-center bg-background/30 px-1 py-0.5 backdrop-blur-md">
-            <span className="truncate text-[10px]">{item.name || item.id}</span>
-          </div>
-        ) : null}
-        {hasActiveSelection && !isSelected ? (
-          <div
-            className="pointer-events-none absolute inset-0 z-5 bg-black/55 backdrop-blur-[1px] rounded-sm"
-            aria-hidden="true"
-          />
-        ) : null}
-        <button
-          type="button"
-          aria-label={t("mediaGrid.select", { name: item.name || item.id })}
-          aria-pressed={isSelected}
-          className="absolute inset-0 z-10 cursor-pointer bg-transparent rounded-2xl"
-          onClick={(event) => {
-            event.stopPropagation();
-            onSelect(item, event.currentTarget.getBoundingClientRect());
-          }}
+        <MediaUploadInput fileInputRef={fileInputRef} item={item} onUpload={onUpload} />
+        <MediaVisualViewport
+          canSelectVideo={canSelectVideo}
+          isError={isError}
+          isLoading={isLoading}
+          isSelectedVideo={isSelectedVideo}
+          item={item}
+          onImageError={() => setFailed(true)}
+          onSelectVideo={onSelectVideo}
+          statusLabel={statusLabel}
+          visualSource={visualSource}
         />
+        {showName ? <MediaNameBar name={item.name || item.id} /> : null}
+        <MediaTileSelectionLayers hasActiveSelection={hasActiveSelection} isSelected={isSelected} />
+        <MediaTileSelectButton item={item} onSelect={onSelect} />
       </div>
     </div>
   );
@@ -365,7 +536,7 @@ function MediaPreview({
 
 function EmptyMediaTile({ label, onClick }: { label: string; onClick?: () => void }) {
   return (
-    <div className={`overflow-visible ${MEDIA_TILE_RADIUS_CLASS}`}>
+    <div className={`min-w-0 max-w-full ${MEDIA_TILE_RADIUS_CLASS}`}>
       <button
         type="button"
         aria-label={label}
@@ -374,10 +545,10 @@ function EmptyMediaTile({ label, onClick }: { label: string; onClick?: () => voi
           event.stopPropagation();
           onClick?.();
         }}
-        className={`flex aspect-square h-auto w-full flex-col items-center justify-center gap-1 border border-dashed border-border bg-transparent text-muted-foreground ring-inset transition-colors hover:bg-accent hover:text-primary hover:ring-1 hover:ring-primary ${MEDIA_TILE_RADIUS_CLASS}`}
+        className={`flex aspect-square h-auto w-full min-w-0 flex-col items-center justify-center gap-1 overflow-hidden border border-dashed border-border bg-transparent px-1 text-muted-foreground ring-inset transition-colors hover:bg-accent hover:text-primary hover:ring-1 hover:ring-primary ${MEDIA_TILE_RADIUS_CLASS}`}
       >
         <Plus className="size-4" />
-        <span className="text-xs">{label}</span>
+        <span className="max-w-full truncate text-xs">{label}</span>
       </button>
     </div>
   );
