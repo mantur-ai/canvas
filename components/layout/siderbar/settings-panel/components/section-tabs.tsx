@@ -18,7 +18,7 @@ export function SectionTabs({ activeSection, onSelectSection }: SectionTabsProps
   const t = useTranslations("Settings");
 
   return (
-    <div className="grid grid-cols-4 gap-1 rounded-lg bg-muted p-1">
+    <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
       {CONFIG_SECTIONS.map((section) => {
         const Icon = getSectionIcon(section);
         return (

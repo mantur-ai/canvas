@@ -451,8 +451,7 @@
       "sections": {
         "image": "Image",
         "video": "Video",
-        "imageBed": "Image Host",
-        "workflowSkill": "Skills"
+        "imageBed": "Image Host"
       },
       "types": {
         "image": "Image",
@@ -480,23 +479,6 @@
       "videoReferenceModes": {
         "all-purpose": "All-purpose Reference",
         "first-last-frame": "First/Last Frame"
-      },
-      "workflowFeature": {
-        "asset-parse": "Asset Parsing",
-        "asset-map-generate": "Asset Binding",
-        "asset-generate": "Batch Asset Images",
-        "asset-panel-generate": "Single Asset Image",
-        "storyboard-image-generate": "Storyboard Image",
-        "storyboard-parse": "Storyboard Parsing",
-        "video-generate": "Storyboard Video"
-      },
-      "workflowSkill": {
-        "feature": "Feature Category",
-        "primarySkill": "Primary Skill",
-        "uploadSkill": "Upload Skill",
-        "none": "None",
-        "selectFeature": "Select a feature category first",
-        "summary": "Primary: {primarySkill}; Upload: {uploadSkill}"
       },
       "actions": {
         "new": "New",

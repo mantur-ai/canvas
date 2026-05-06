@@ -9,14 +9,13 @@ import type {
   ImageBedConfig,
   ImageModelConfig,
   VideoModelConfig,
-  WorkflowFeature,
 } from "@/lib/config-schema";
 import { inferModelProviderId } from "@/lib/model-providers";
 
 import { ConfigList } from "./components/config-list";
 import { SectionTabs } from "./components/section-tabs";
 import { SettingsConfigForm } from "./components/settings-config-form";
-import { EMPTY_CONFIG, EMPTY_FORM_VALUES, WORKFLOW_FEATURES } from "./constants";
+import { EMPTY_CONFIG, EMPTY_FORM_VALUES } from "./constants";
 import type { ConfigItem, ConfigSection, FeedbackKey, SettingsFormValues } from "./types";
 import { createConfigId, getSectionItems, normalizeImageBeds, toFormValues } from "./utils";
 
@@ -42,12 +41,10 @@ export function SettingsPanel() {
   const selectedItem = activeItems.find((item) => item.id === selectedId);
   const isCreateMode = selectedId === null;
   const canSave =
-    activeSection === "workflowSkill"
-      ? Boolean(selectedId) && Boolean(watchedValues.primarySkill) && !isSaving
-      : Boolean(watchedValues.name?.trim()) &&
-        Boolean(watchedValues.apiKey?.trim()) &&
-        Boolean(watchedValues.example?.trim()) &&
-        !isSaving;
+    Boolean(watchedValues.name?.trim()) &&
+    Boolean(watchedValues.apiKey?.trim()) &&
+    Boolean(watchedValues.example?.trim()) &&
+    !isSaving;
 
   const resetForm = useCallback(
     (section: ConfigSection, item?: ConfigItem) => {
@@ -106,14 +103,8 @@ export function SettingsPanel() {
 
   const selectSection = (section: ConfigSection) => {
     setActiveSection(section);
-    if (section === "workflowSkill") {
-      const firstItem = getSectionItems(config, section)[0];
-      setSelectedId(firstItem?.id ?? null);
-      resetForm(section, firstItem);
-    } else {
-      setSelectedId(null);
-      resetForm(section);
-    }
+    setSelectedId(null);
+    resetForm(section);
     setDeleteConfirmId(null);
   };
 
@@ -124,21 +115,6 @@ export function SettingsPanel() {
   };
 
   const buildNextConfig = (id: string, values: SettingsFormValues): AppConfig => {
-    if (activeSection === "workflowSkill") {
-      if (!WORKFLOW_FEATURES.includes(id as WorkflowFeature)) return config;
-
-      return {
-        ...config,
-        workflowSkills: {
-          ...config.workflowSkills,
-          [id]: {
-            primarySkill: values.primarySkill,
-            ...(values.uploadSkill === "none" ? {} : { uploadSkill: values.uploadSkill }),
-          },
-        },
-      };
-    }
-
     const name = values.name.trim();
     const apiKey = values.apiKey.trim();
     const example = values.example.trim();

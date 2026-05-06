@@ -451,8 +451,7 @@
       "sections": {
         "image": "图片",
         "video": "视频",
-        "imageBed": "图床",
-        "workflowSkill": "技能"
+        "imageBed": "图床"
       },
       "types": {
         "image": "图片",
@@ -480,23 +479,6 @@
       "videoReferenceModes": {
         "all-purpose": "全能参考",
         "first-last-frame": "首尾帧"
-      },
-      "workflowFeature": {
-        "asset-parse": "资产解析",
-        "asset-map-generate": "资产绑定",
-        "asset-generate": "批量资产图",
-        "asset-panel-generate": "单个资产图",
-        "storyboard-image-generate": "分镜图片",
-        "storyboard-parse": "分镜拆分",
-        "video-generate": "分镜视频"
-      },
-      "workflowSkill": {
-        "feature": "功能类别",
-        "primarySkill": "主技能",
-        "uploadSkill": "上传技能",
-        "none": "无",
-        "selectFeature": "请先选择功能类别",
-        "summary": "主技能：{primarySkill}；上传：{uploadSkill}"
       },
       "actions": {
         "new": "新增",

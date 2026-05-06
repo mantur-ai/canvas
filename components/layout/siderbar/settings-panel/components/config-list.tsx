@@ -11,13 +11,7 @@ import { resolveModelProvider } from "@/lib/model-providers";
 import { cn } from "@/lib/utils";
 
 import type { ConfigItem, ConfigSection } from "../types";
-import {
-  getSectionIcon,
-  hasApiKey,
-  hasDefaultFlag,
-  isWorkflowSkillConfig,
-  maskApiKey,
-} from "../utils";
+import { getSectionIcon, hasApiKey, hasDefaultFlag, maskApiKey } from "../utils";
 
 type ConfigListProps = {
   activeItems: ConfigItem[];
@@ -49,17 +43,15 @@ export function ConfigList({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
-      {activeSection === "workflowSkill" ? null : (
-        <Button
-          type="button"
-          variant={isCreateMode ? "default" : "secondary"}
-          onClick={onCreate}
-          className="h-10 justify-start"
-        >
-          <Plus className="size-4" />
-          {t("modelManager.actions.new")}
-        </Button>
-      )}
+      <Button
+        type="button"
+        variant={isCreateMode ? "default" : "secondary"}
+        onClick={onCreate}
+        className="h-10 justify-start"
+      >
+        <Plus className="size-4" />
+        {t("modelManager.actions.new")}
+      </Button>
 
       <div className="flex items-center justify-between px-1">
         <h4 className="text-xs font-medium text-muted-foreground">
@@ -81,7 +73,7 @@ export function ConfigList({
               const isSelected = selectedId === item.id;
               const isConfirmingDelete = deleteConfirmId === item.id;
               const provider =
-                activeSection === "imageBed" || isWorkflowSkillConfig(item) || !hasApiKey(item)
+                activeSection === "imageBed" || !hasApiKey(item)
                   ? undefined
                   : resolveModelProvider(
                       "providerId" in item ? item.providerId : undefined,
@@ -114,11 +106,7 @@ export function ConfigList({
                     )}
                     <div className="min-w-0 flex-1 overflow-hidden">
                       <div className="flex min-w-0 items-center gap-1.5">
-                        <p className="min-w-0 flex-1 truncate text-sm font-medium">
-                          {isWorkflowSkillConfig(item)
-                            ? t(`modelManager.workflowFeature.${item.name}`)
-                            : item.name}
-                        </p>
+                        <p className="min-w-0 flex-1 truncate text-sm font-medium">{item.name}</p>
                         {hasDefaultFlag(item) && item.isDefault ? (
                           <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
                             {t("modelManager.form.default")}
@@ -126,14 +114,7 @@ export function ConfigList({
                         ) : null}
                       </div>
                       <p className="mt-1 truncate text-xs text-muted-foreground">
-                        {isWorkflowSkillConfig(item)
-                          ? t("modelManager.workflowSkill.summary", {
-                              primarySkill: item.primarySkill,
-                              uploadSkill: item.uploadSkill ?? t("modelManager.workflowSkill.none"),
-                            })
-                          : hasApiKey(item)
-                            ? maskApiKey(item.apiKey)
-                            : ""}
+                        {hasApiKey(item) ? maskApiKey(item.apiKey) : ""}
                       </p>
                     </div>
                   </button>
@@ -147,29 +128,27 @@ export function ConfigList({
                     />
                   ) : null}
 
-                  {activeSection === "workflowSkill" ? null : (
-                    <Button
-                      type="button"
-                      variant={isConfirmingDelete ? "destructive" : "ghost"}
-                      size={isConfirmingDelete ? "xs" : "icon-sm"}
-                      onClick={() => onRemove(item.id)}
-                      aria-label={
-                        isConfirmingDelete
-                          ? t("modelManager.actions.confirmRemove")
-                          : t("modelManager.actions.remove")
-                      }
-                      className={cn(
-                        "shrink-0",
-                        !isConfirmingDelete && "text-muted-foreground hover:text-destructive",
-                      )}
-                    >
-                      {isConfirmingDelete ? (
-                        t("modelManager.actions.confirmRemove")
-                      ) : (
-                        <Trash2 className="size-4" />
-                      )}
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    variant={isConfirmingDelete ? "destructive" : "ghost"}
+                    size={isConfirmingDelete ? "xs" : "icon-sm"}
+                    onClick={() => onRemove(item.id)}
+                    aria-label={
+                      isConfirmingDelete
+                        ? t("modelManager.actions.confirmRemove")
+                        : t("modelManager.actions.remove")
+                    }
+                    className={cn(
+                      "shrink-0",
+                      !isConfirmingDelete && "text-muted-foreground hover:text-destructive",
+                    )}
+                  >
+                    {isConfirmingDelete ? (
+                      t("modelManager.actions.confirmRemove")
+                    ) : (
+                      <Trash2 className="size-4" />
+                    )}
+                  </Button>
                 </div>
               );
             })}

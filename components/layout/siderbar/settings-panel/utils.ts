@@ -1,4 +1,4 @@
-import { ImageIcon, Link2, Route, Video } from "lucide-react";
+import { ImageIcon, Link2, Video } from "lucide-react";
 import { v4 as createUuid } from "uuid";
 
 import type {
@@ -8,14 +8,13 @@ import type {
   VideoModelConfig,
 } from "@/lib/config-schema";
 
-import { EMPTY_FORM_VALUES, WORKFLOW_FEATURES } from "./constants";
-import type { ConfigItem, ConfigSection, SettingsFormValues, WorkflowSkillConfig } from "./types";
+import { EMPTY_FORM_VALUES } from "./constants";
+import type { ConfigItem, ConfigSection, SettingsFormValues } from "./types";
 
 export function getSectionIcon(section: ConfigSection) {
   if (section === "image") return ImageIcon;
   if (section === "video") return Video;
-  if (section === "imageBed") return Link2;
-  return Route;
+  return Link2;
 }
 
 export function createConfigId(section: ConfigSection) {
@@ -40,23 +39,11 @@ export function hasApiKey(
   return "apiKey" in item;
 }
 
-export function isWorkflowSkillConfig(item: ConfigItem): item is WorkflowSkillConfig {
-  return "primarySkill" in item;
-}
-
 export function toFormValues(section: ConfigSection, item?: ConfigItem): SettingsFormValues {
   if (!item) {
     return {
       ...EMPTY_FORM_VALUES,
       isDefault: section === "imageBed",
-    };
-  }
-
-  if (isWorkflowSkillConfig(item)) {
-    return {
-      ...EMPTY_FORM_VALUES,
-      primarySkill: item.primarySkill,
-      uploadSkill: item.uploadSkill ?? "none",
     };
   }
 
@@ -73,13 +60,7 @@ export function toFormValues(section: ConfigSection, item?: ConfigItem): Setting
 export function getSectionItems(config: AppConfig, section: ConfigSection): ConfigItem[] {
   if (section === "image") return config.imageModels;
   if (section === "video") return config.videoModels;
-  if (section === "imageBed") return config.imageBeds;
-  return WORKFLOW_FEATURES.map((feature) => ({
-    id: feature,
-    name: feature,
-    primarySkill: config.workflowSkills[feature].primarySkill,
-    uploadSkill: config.workflowSkills[feature].uploadSkill,
-  }));
+  return config.imageBeds;
 }
 
 export function normalizeImageBeds(imageBeds: ImageBedConfig[]) {

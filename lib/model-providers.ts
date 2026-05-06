@@ -1,3 +1,5 @@
+import { LOBE_ICON_SLUGS } from "@/lib/lobe-icon-slugs";
+
 export type ModelProvider = {
   fallbackText: string;
   iconUrl: string;
@@ -6,168 +8,281 @@ export type ModelProvider = {
   name: string;
 };
 
-const simpleIconUrl = (slug: string) => `https://cdn.simpleicons.org/${slug}`;
+type LobeIconAlias = {
+  fallbackText: string;
+  id: string;
+  keywords: string[];
+  name: string;
+  slug: string;
+};
 
-export const MODEL_PROVIDERS: ModelProvider[] = [
+const DYNAMIC_LOBE_ICON_ID_PREFIX = "lobe:";
+const LOBE_ICON_BASE_URL = "https://unpkg.com/@lobehub/icons-static-svg@latest/icons";
+const lobeIconSlugSet = new Set<string>(LOBE_ICON_SLUGS);
+
+const lobeIconUrl = (slug: string) => `${LOBE_ICON_BASE_URL}/${slug}.svg`;
+
+const MODEL_ICON_ALIASES: LobeIconAlias[] = [
   {
-    id: "openai",
-    name: "OpenAI",
-    fallbackText: "O",
-    iconUrl: simpleIconUrl("openai"),
-    keywords: ["openai", "gpt", "chatgpt", "dall-e", "dalle", "sora", "o1", "o3", "o4"],
-  },
-  {
-    id: "anthropic",
-    name: "Anthropic",
-    fallbackText: "A",
-    iconUrl: simpleIconUrl("anthropic"),
-    keywords: ["anthropic", "claude", "haiku", "sonnet", "opus"],
-  },
-  {
-    id: "google",
-    name: "Google",
+    id: "gpt",
+    name: "GPT",
     fallbackText: "G",
-    iconUrl: simpleIconUrl("google"),
-    keywords: ["google", "gemini", "imagen", "veo", "vertex"],
+    slug: "openai",
+    keywords: ["gpt", "chatgpt", "o1", "o3", "o4"],
   },
   {
-    id: "deepseek",
-    name: "DeepSeek",
+    id: "dalle",
+    name: "DALL-E",
     fallbackText: "D",
-    iconUrl: simpleIconUrl("deepseek"),
-    keywords: ["deepseek", "deep seek"],
+    slug: "dalle-color",
+    keywords: ["dall-e", "dalle"],
+  },
+  {
+    id: "seedance",
+    name: "Seedance",
+    fallbackText: "S",
+    slug: "doubao-color",
+    keywords: ["seedance", "seedance2", "seedance2.0", "seedance 2.0"],
+  },
+  {
+    id: "seedream",
+    name: "Seedream",
+    fallbackText: "S",
+    slug: "doubao-color",
+    keywords: ["seedream", "seedream3", "seedream4", "seedream 3", "seedream 4"],
+  },
+  {
+    id: "doubao",
+    name: "Doubao",
+    fallbackText: "豆",
+    slug: "doubao-color",
+    keywords: ["doubao", "豆包"],
+  },
+  {
+    id: "jimeng",
+    name: "Jimeng",
+    fallbackText: "即",
+    slug: "jimeng-color",
+    keywords: ["jimeng", "即梦"],
   },
   {
     id: "qwen",
     name: "Qwen",
     fallbackText: "Q",
-    iconUrl: simpleIconUrl("alibabacloud"),
-    keywords: ["qwen", "通义", "tongyi", "wanxiang", "wanx", "qvq", "qwq", "alibaba", "aliyun"],
+    slug: "qwen-color",
+    keywords: ["qwen", "通义", "tongyi", "qvq", "qwq"],
+  },
+  {
+    id: "claude",
+    name: "Claude",
+    fallbackText: "C",
+    slug: "claude-color",
+    keywords: ["claude", "haiku", "sonnet", "opus"],
+  },
+  {
+    id: "kimi",
+    name: "Kimi",
+    fallbackText: "K",
+    slug: "kimi-color",
+    keywords: ["kimi"],
+  },
+  {
+    id: "chatglm",
+    name: "ChatGLM",
+    fallbackText: "G",
+    slug: "chatglm-color",
+    keywords: ["chatglm", "glm"],
+  },
+  {
+    id: "wenxin",
+    name: "Wenxin",
+    fallbackText: "文",
+    slug: "wenxin-color",
+    keywords: ["wenxin", "文心", "ernie"],
+  },
+  {
+    id: "hailuo",
+    name: "Hailuo",
+    fallbackText: "海",
+    slug: "hailuo-color",
+    keywords: ["hailuo", "海螺"],
+  },
+  {
+    id: "hunyuan",
+    name: "Hunyuan",
+    fallbackText: "混",
+    slug: "hunyuan-color",
+    keywords: ["hunyuan", "混元", "元宝"],
+  },
+  {
+    id: "kling",
+    name: "Kling",
+    fallbackText: "K",
+    slug: "kling-color",
+    keywords: ["kling", "可灵"],
+  },
+  {
+    id: "kolors",
+    name: "Kolors",
+    fallbackText: "K",
+    slug: "kolors-color",
+    keywords: ["kolors", "可图"],
+  },
+  {
+    id: "llama",
+    name: "Llama",
+    fallbackText: "L",
+    slug: "metaai-color",
+    keywords: ["llama", "llama3", "llama4"],
+  },
+  {
+    id: "command-r",
+    name: "Command R",
+    fallbackText: "C",
+    slug: "cohere-color",
+    keywords: ["command-r", "command r"],
+  },
+  {
+    id: "stable-diffusion",
+    name: "Stable Diffusion",
+    fallbackText: "S",
+    slug: "stability-color",
+    keywords: ["stable diffusion", "sdxl", "stable image"],
+  },
+  {
+    id: "black-forest-labs",
+    name: "Black Forest Labs",
+    fallbackText: "B",
+    slug: "bfl",
+    keywords: ["black forest", "black forest labs"],
+  },
+];
+
+const PROVIDER_FALLBACKS: ModelProvider[] = [
+  {
+    id: "openai",
+    name: "OpenAI",
+    fallbackText: "O",
+    iconUrl: lobeIconUrl("openai"),
+    keywords: ["openai"],
+  },
+  {
+    id: "anthropic",
+    name: "Anthropic",
+    fallbackText: "A",
+    iconUrl: lobeIconUrl("anthropic"),
+    keywords: ["anthropic"],
+  },
+  {
+    id: "google",
+    name: "Google",
+    fallbackText: "G",
+    iconUrl: lobeIconUrl("google-color"),
+    keywords: ["google", "vertex"],
+  },
+  {
+    id: "alibaba",
+    name: "Alibaba",
+    fallbackText: "A",
+    iconUrl: lobeIconUrl("alibaba-color"),
+    keywords: ["alibaba", "aliyun", "阿里"],
   },
   {
     id: "bytedance",
     name: "ByteDance",
     fallbackText: "B",
-    iconUrl: simpleIconUrl("bytedance"),
-    keywords: ["bytedance", "byte dance", "doubao", "豆包", "seedream", "seedance", "火山", "volcengine"],
+    iconUrl: lobeIconUrl("bytedance-color"),
+    keywords: ["bytedance", "byte dance", "火山", "volcengine"],
   },
   {
     id: "moonshot",
     name: "Moonshot AI",
-    fallbackText: "K",
-    iconUrl: "https://www.moonshot.cn/favicon.ico",
-    keywords: ["moonshot", "kimi", "月之暗面"],
+    fallbackText: "M",
+    iconUrl: lobeIconUrl("moonshot"),
+    keywords: ["moonshot", "月之暗面"],
   },
   {
     id: "minimax",
     name: "MiniMax",
     fallbackText: "M",
-    iconUrl: "https://www.minimaxi.com/favicon.ico",
-    keywords: ["minimax", "mini max", "abab", "海螺", "hailuo"],
+    iconUrl: lobeIconUrl("minimax-color"),
+    keywords: ["minimax", "mini max", "abab"],
   },
   {
     id: "zhipu",
     name: "Zhipu AI",
     fallbackText: "Z",
-    iconUrl: "https://open.bigmodel.cn/favicon.ico",
-    keywords: ["zhipu", "智谱", "glm", "bigmodel", "清言"],
+    iconUrl: lobeIconUrl("zhipu-color"),
+    keywords: ["zhipu", "智谱", "bigmodel", "清言"],
   },
   {
     id: "baidu",
     name: "Baidu",
     fallbackText: "B",
-    iconUrl: simpleIconUrl("baidu"),
-    keywords: ["baidu", "百度", "ernie", "文心", "千帆"],
+    iconUrl: lobeIconUrl("baidu-color"),
+    keywords: ["baidu", "百度", "千帆"],
   },
   {
     id: "tencent",
     name: "Tencent",
     fallbackText: "T",
-    iconUrl: simpleIconUrl("tencentqq"),
-    keywords: ["tencent", "腾讯", "hunyuan", "混元", "元宝"],
+    iconUrl: lobeIconUrl("tencentcloud-color"),
+    keywords: ["tencent", "腾讯"],
   },
   {
     id: "kuaishou",
-    name: "Kling",
+    name: "Kuaishou",
     fallbackText: "K",
-    iconUrl: "https://app.klingai.com/favicon.ico",
-    keywords: ["kling", "可灵", "kuaishou", "快手"],
+    iconUrl: lobeIconUrl("kwaikat"),
+    keywords: ["kuaishou", "快手"],
   },
   {
     id: "stability",
     name: "Stability AI",
     fallbackText: "S",
-    iconUrl: simpleIconUrl("stabilityai"),
-    keywords: ["stability", "stable diffusion", "sdxl", "stable image"],
-  },
-  {
-    id: "runway",
-    name: "Runway",
-    fallbackText: "R",
-    iconUrl: simpleIconUrl("runway"),
-    keywords: ["runway", "gen-1", "gen-2", "gen-3", "gen-4"],
-  },
-  {
-    id: "luma",
-    name: "Luma AI",
-    fallbackText: "L",
-    iconUrl: "https://lumalabs.ai/favicon.ico",
-    keywords: ["luma", "lumalabs", "dream machine", "ray2"],
-  },
-  {
-    id: "midjourney",
-    name: "Midjourney",
-    fallbackText: "M",
-    iconUrl: simpleIconUrl("midjourney"),
-    keywords: ["midjourney", "mj", "niji"],
-  },
-  {
-    id: "mistral",
-    name: "Mistral AI",
-    fallbackText: "M",
-    iconUrl: simpleIconUrl("mistralai"),
-    keywords: ["mistral", "mixtral", "codestral", "magistral", "pixtral"],
+    iconUrl: lobeIconUrl("stability-color"),
+    keywords: ["stability"],
   },
   {
     id: "xai",
     name: "xAI",
     fallbackText: "X",
-    iconUrl: simpleIconUrl("x"),
-    keywords: ["xai", "x.ai", "grok"],
+    iconUrl: lobeIconUrl("xai"),
+    keywords: ["xai", "x.ai"],
   },
   {
     id: "meta",
     name: "Meta",
     fallbackText: "M",
-    iconUrl: simpleIconUrl("meta"),
-    keywords: ["meta", "llama", "llama3", "llama4"],
+    iconUrl: lobeIconUrl("metaai-color"),
+    keywords: ["meta"],
   },
   {
     id: "cohere",
     name: "Cohere",
     fallbackText: "C",
-    iconUrl: simpleIconUrl("cohere"),
-    keywords: ["cohere", "command-r", "command r"],
+    iconUrl: lobeIconUrl("cohere-color"),
+    keywords: ["cohere"],
   },
   {
     id: "huggingface",
     name: "Hugging Face",
     fallbackText: "H",
-    iconUrl: simpleIconUrl("huggingface"),
+    iconUrl: lobeIconUrl("huggingface-color"),
     keywords: ["huggingface", "hugging face", "hf", "inference endpoint"],
   },
   {
     id: "replicate",
     name: "Replicate",
     fallbackText: "R",
-    iconUrl: simpleIconUrl("replicate"),
+    iconUrl: lobeIconUrl("replicate"),
     keywords: ["replicate"],
   },
   {
     id: "ollama",
     name: "Ollama",
     fallbackText: "O",
-    iconUrl: simpleIconUrl("ollama"),
+    iconUrl: lobeIconUrl("ollama"),
     keywords: ["ollama"],
   },
   {
@@ -179,26 +294,130 @@ export const MODEL_PROVIDERS: ModelProvider[] = [
   },
 ];
 
-const PROVIDER_BY_ID = new Map(MODEL_PROVIDERS.map((provider) => [provider.id, provider]));
+const MODEL_ICON_PROVIDERS: ModelProvider[] = MODEL_ICON_ALIASES.map((alias) => ({
+  fallbackText: alias.fallbackText,
+  iconUrl: lobeIconUrl(alias.slug),
+  id: alias.id,
+  keywords: alias.keywords,
+  name: alias.name,
+}));
+
+export const MODEL_PROVIDERS: ModelProvider[] = [
+  ...MODEL_ICON_PROVIDERS,
+  ...PROVIDER_FALLBACKS,
+];
+
+const PROVIDER_BY_ID = new Map<string, ModelProvider>();
+
+for (const provider of MODEL_PROVIDERS) {
+  if (!PROVIDER_BY_ID.has(provider.id)) PROVIDER_BY_ID.set(provider.id, provider);
+}
 
 export function getModelProvider(providerId?: string) {
   if (!providerId) return undefined;
+
+  if (providerId.startsWith(DYNAMIC_LOBE_ICON_ID_PREFIX)) {
+    return createLobeIconProvider(providerId.slice(DYNAMIC_LOBE_ICON_ID_PREFIX.length));
+  }
+
   return PROVIDER_BY_ID.get(providerId);
 }
 
 export function inferModelProviderId(...values: Array<string | undefined>) {
-  const searchableText = values
-    .map((value) => value?.toLowerCase().trim() ?? "")
-    .filter(Boolean)
-    .join(" ");
-
+  const searchableText = normalizeSearchText(...values);
   if (!searchableText) return undefined;
 
-  return MODEL_PROVIDERS.find((provider) =>
-    provider.keywords.some((keyword) => searchableText.includes(keyword.toLowerCase())),
-  )?.id;
+  if (/\bseedance(?:[\s.-]*\d+(?:\.\d+)?)?\b/u.test(searchableText)) return "seedance";
+  if (/\bseedream(?:[\s.-]*\d+(?:\.\d+)?)?\b/u.test(searchableText)) return "seedream";
+  if (/\bdoubao(?:[\s.-]*\d+(?:\.\d+)?)?\b|豆包/u.test(searchableText)) return "doubao";
+
+  const modelIconProvider = findProviderByKeywords(MODEL_ICON_PROVIDERS, searchableText);
+  if (modelIconProvider) return modelIconProvider.id;
+
+  const lobeIconSlug = inferLobeIconSlug(searchableText);
+  if (lobeIconSlug) return `${DYNAMIC_LOBE_ICON_ID_PREFIX}${lobeIconSlug}`;
+
+  return findProviderByKeywords(PROVIDER_FALLBACKS, searchableText)?.id;
 }
 
 export function resolveModelProvider(providerId: string | undefined, ...values: string[]) {
-  return getModelProvider(providerId) ?? getModelProvider(inferModelProviderId(...values));
+  return getModelProvider(inferModelProviderId(...values)) ?? getModelProvider(providerId);
+}
+
+function createLobeIconProvider(slug: string): ModelProvider | undefined {
+  if (!lobeIconSlugSet.has(slug)) return undefined;
+
+  return {
+    fallbackText: slug.slice(0, 1).toUpperCase(),
+    iconUrl: lobeIconUrl(slug),
+    id: `${DYNAMIC_LOBE_ICON_ID_PREFIX}${slug}`,
+    keywords: [slug],
+    name: formatLobeIconName(slug),
+  };
+}
+
+function findProviderByKeywords(providers: ModelProvider[], searchableText: string) {
+  return providers.find((provider) =>
+    provider.keywords.some((keyword) => searchableText.includes(keyword.toLowerCase())),
+  );
+}
+
+function formatLobeIconName(slug: string) {
+  return slug
+    .split("-")
+    .filter((part) => part !== "color")
+    .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
+function inferLobeIconSlug(searchableText: string) {
+  const candidates = createLobeIconCandidates(tokenizeSearchText(searchableText));
+
+  for (const candidate of candidates) {
+    const exactSlug = resolveExistingLobeSlug(candidate);
+    if (exactSlug) return exactSlug;
+
+    const withoutVersion = candidate.replace(/(?:v?\d+[a-z]*|\d+[a-z]*)$/u, "");
+    const versionlessSlug = resolveExistingLobeSlug(withoutVersion);
+    if (versionlessSlug) return versionlessSlug;
+  }
+
+  return undefined;
+}
+
+function createLobeIconCandidates(tokens: string[]) {
+  const candidates: string[] = [];
+
+  for (let start = 0; start < tokens.length; start += 1) {
+    for (let end = Math.min(tokens.length, start + 4); end > start; end -= 1) {
+      const phraseTokens = tokens.slice(start, end);
+      candidates.push(phraseTokens.join(""));
+      candidates.push(phraseTokens.join("-"));
+    }
+  }
+
+  return candidates;
+}
+
+function resolveExistingLobeSlug(slug: string) {
+  if (slug.length < 3) return undefined;
+  if (lobeIconSlugSet.has(`${slug}-color`)) return `${slug}-color`;
+  if (lobeIconSlugSet.has(slug)) return slug;
+  return undefined;
+}
+
+function normalizeSearchText(...values: Array<string | undefined>) {
+  return values
+    .map((value) => value?.toLowerCase().trim() ?? "")
+    .filter(Boolean)
+    .join(" ");
+}
+
+function tokenizeSearchText(searchableText: string) {
+  return searchableText
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter((token) => token.length > 0 && !/^\d+(?:\.\d+)?$/.test(token));
 }
