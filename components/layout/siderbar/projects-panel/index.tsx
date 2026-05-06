@@ -93,7 +93,7 @@ function AddScriptDialog({
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onCreated: () => void
+  onCreated: (projectId: string) => Promise<void> | void
 }) {
   const t = useTranslations("Projects")
   const [sampleOpen, setSampleOpen] = useState(false)
@@ -128,9 +128,9 @@ function AddScriptDialog({
 
           <AddScriptForm
             onCancel={handleClose}
-            onCreated={() => {
+            onCreated={async (projectId) => {
+              await onCreated(projectId)
               handleClose()
-              onCreated()
             }}
             onViewSample={() => setSampleOpen(true)}
           />
@@ -421,7 +421,18 @@ export function ProjectsPanel({ onEnteredProject }: { onEnteredProject?: () => v
         </div>
       </ScrollArea>
 
-      <AddScriptDialog open={addScriptOpen} onOpenChange={setAddScriptOpen} onCreated={refreshProjects} />
+      <AddScriptDialog
+        open={addScriptOpen}
+        onOpenChange={setAddScriptOpen}
+        onCreated={async (projectId) => {
+          await refreshProjects()
+          const projectDetail = await updateCurrentProject(projectId)
+          setCommandStatuses({})
+          setCurrentProject(projectDetail)
+          window.dispatchEvent(new CustomEvent("mantur:onboarding-refresh"))
+          onEnteredProject?.()
+        }}
+      />
       <EditProjectDialog
         key={editingProject?.id ?? "edit-project"}
         project={editingProject}

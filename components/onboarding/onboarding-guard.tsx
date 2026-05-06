@@ -162,11 +162,16 @@ export function OnboardingGuard() {
       if (!shouldBlock) return;
       void refreshStatus();
     };
+    const handleOnboardingRefresh = () => {
+      void refreshStatus();
+    };
 
     window.addEventListener("focus", handleFocus);
+    window.addEventListener("mantur:onboarding-refresh", handleOnboardingRefresh);
     return () => {
       window.clearTimeout(initialCheckId);
       window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("mantur:onboarding-refresh", handleOnboardingRefresh);
     };
   }, [refreshStatus, shouldBlock]);
 

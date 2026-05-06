@@ -190,13 +190,32 @@ export async function createProject(params: {
       id: createUuid(),
       name: episode.name,
     }));
+    const project: ProjectDetail = {
+      id: projectId,
+      name: params.fileName,
+      description: params.description,
+      aspectRatio: params.aspectRatio,
+      resolution: params.resolution,
+      episodes,
+      assets: {
+        characters: [],
+        scenes: [],
+        props: [],
+        voices: [],
+        videos: [],
+      },
+      assetsParsed: false,
+      createdAt: new Date().toISOString(),
+    };
 
     await mkdir(projectDir, { recursive: true });
     const episodeDir = path.resolve(projectDir, "episode");
     assertSafeProjectPath(episodeDir);
     await mkdir(episodeDir, { recursive: true });
 
-    await writeFile(path.resolve(projectDir, "script.md"), params.fileContent, "utf8");
+    const scriptPath = path.resolve(projectDir, "script.md");
+    assertSafeProjectPath(scriptPath);
+    await writeFile(scriptPath, params.fileContent, "utf8");
     await Promise.all(
       episodes.map((episode) => {
         const episodeStoryboardPath = path.resolve(episodeDir, `${episode.id}.json`);
@@ -207,31 +226,8 @@ export async function createProject(params: {
       }),
     );
 
-    await writeFile(
-      path.resolve(projectDir, "project.json"),
-      JSON.stringify(
-        {
-          id: projectId,
-          name: params.fileName,
-          description: params.description,
-          aspectRatio: params.aspectRatio,
-          resolution: params.resolution,
-          episodes,
-          assets: {
-            characters: [],
-            scenes: [],
-            props: [],
-            voices: [],
-            videos: [],
-          },
-          assetsParsed: false,
-          createdAt: new Date().toISOString(),
-        },
-        null,
-        2,
-      ),
-      "utf8",
-    );
+    await writeProjectDetail(project);
+    await writeCurrentProjectDetail(project);
 
     return { success: true, projectId };
   } catch (err) {

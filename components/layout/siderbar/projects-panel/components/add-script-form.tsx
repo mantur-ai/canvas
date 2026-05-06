@@ -51,7 +51,7 @@ type BaseFormProps = {
 
 type CreateScriptFormProps = BaseFormProps & {
   mode?: "create"
-  onCreated: () => void
+  onCreated: (projectId: string) => Promise<void> | void
   onViewSample: () => void
 }
 
@@ -327,9 +327,9 @@ export function AddScriptForm(props: AddScriptFormProps) {
       })
 
       if (result.success) {
+        await props.onCreated(result.projectId)
         toast.success(t("addScript.createSuccess"))
         resetUpload()
-        props.onCreated()
       } else {
         toast.error(t("addScript.createError"))
       }
