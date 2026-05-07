@@ -976,7 +976,9 @@ export function addImageToProjectAssets(
   project: ProjectDetail,
   params: { category: string; imageId: string; parentId?: string },
 ) {
-  if (params.category === "character") {
+  const category = normalizeProjectImageType(params.category);
+
+  if (category === "characters") {
     return {
       ...project,
       assets: {
@@ -988,7 +990,7 @@ export function addImageToProjectAssets(
     };
   }
 
-  if (params.category === "scene") {
+  if (category === "scenes") {
     return {
       ...project,
       assets: {
@@ -998,7 +1000,7 @@ export function addImageToProjectAssets(
     };
   }
 
-  if (params.category === "prop") {
+  if (category === "props") {
     return {
       ...project,
       assets: {

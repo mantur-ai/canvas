@@ -206,12 +206,13 @@ export async function createProjectImage(params: {
     }
 
     const currentImages = await normalizeProjectImageAssets(params.projectId);
+    const imageType = normalizeProjectImageType(params.image.category);
     const image: ProjectImageAsset = {
       id,
       name: params.image.name,
       publicUrl: "",
       publicUrlUpdatedAt: "",
-      type: params.image.category,
+      type: imageType,
       source: params.image.source,
       prompt: params.image.prompt,
       url,
@@ -222,7 +223,7 @@ export async function createProjectImage(params: {
     const project = await readProjectDetail(params.projectId).catch(() => null);
     const nextProject = project
       ? addImageToProjectAssets(project, {
-        category: params.image.category,
+        category: imageType,
         imageId: id,
         parentId: params.image.parentId,
       })
@@ -373,6 +374,9 @@ export async function storeGeneratedProjectImage(params: {
     const currentImages = await normalizeProjectImageAssets(params.projectId);
     const currentImage = currentImages.find((image) => image.id === params.imageId);
     const sourcePrompt = currentImage?.prompt ?? "";
+    const imageType = params.category
+      ? normalizeProjectImageType(params.category)
+      : (currentImage?.type ?? "reference");
     const nextImage: ProjectImageAsset = {
       id: params.imageId,
       name: params.name ?? currentImage?.name ?? "",
@@ -380,7 +384,7 @@ export async function storeGeneratedProjectImage(params: {
       publicUrlUpdatedAt: currentImage?.publicUrlUpdatedAt ?? "",
       prompt: sourcePrompt,
       source: params.source ?? currentImage?.source ?? "generate",
-      type: params.category ?? currentImage?.type ?? "reference",
+      type: imageType,
       url: `/api/projects/${encodeURIComponent(params.projectId)}/images/${encodeURIComponent(fileName)}`,
     };
     const images = currentImage
@@ -388,11 +392,11 @@ export async function storeGeneratedProjectImage(params: {
       : [nextImage, ...currentImages];
     await writeFile(imagesJsonPath, JSON.stringify(images, null, 2), "utf8");
 
-    if (params.category && params.category !== "reference") {
+    if (imageType !== "reference") {
       const project = await readProjectDetail(params.projectId).catch(() => null);
       const nextProject = project
         ? addImageToProjectAssets(project, {
-          category: params.category,
+          category: imageType,
           imageId: params.imageId,
           parentId: params.parentId,
         })

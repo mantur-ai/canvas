@@ -22,6 +22,7 @@ import {
   fetchProjectImages,
   fetchProjectVideos,
   normalizeProjectStoryboardAssets,
+  type ProjectSkillContextFile,
 } from "@/lib/project-api";
 import { useAgentStore } from "@/store/use-agent-store";
 import { useCanvasStore } from "@/store/use-canvas-store";
@@ -148,11 +149,25 @@ function releaseAsyncTaskEventSource(projectId: string) {
 function formatAttachmentContext(
   projectId: string,
   payload: ChatWindowSubmitPayload,
+  skillContext?: {
+    contextDir: string;
+    files: ProjectSkillContextFile[];
+    manifestPath: string;
+  },
 ) {
+  const contextFileById = new Map(
+    (skillContext?.files ?? []).map((file) => [file.id, file]),
+  );
+
   return payload.attachments
     .map((attachment, index) => {
+      const contextFile = contextFileById.get(attachment.id);
       const filePath =
-        "fileName" in attachment
+        contextFile?.relativePath
+          ? `${skillContext?.contextDir}/${contextFile.relativePath}`
+          : skillContext
+          ? `${skillContext.manifestPath}#${attachment.id}`
+          : "fileName" in attachment
           ? `projects/${projectId}/temp/${attachment.fileName}`
           : attachment.url;
 
@@ -216,12 +231,14 @@ function buildInlineGridCommand(params: {
   skillRoute: WorkflowSkillRoute | null;
   skillContext?: {
     contextDir: string;
+    files: ProjectSkillContextFile[];
     manifestPath: string;
   };
 }) {
   const attachmentContext = formatAttachmentContext(
     params.projectId,
     params.payload,
+    params.skillContext,
   );
   const videoOptions = params.payload.videoOptions
     ? Object.entries(params.payload.videoOptions)
@@ -242,7 +259,7 @@ function buildInlineGridCommand(params: {
     params.recipePack ? `[Project Recipe Pack]\n${params.recipePack}` : "",
     attachmentContext ? `[Attached Files]\n${attachmentContext}` : "",
     params.skillContext
-      ? `[Skill Temporary Context]\nDirectory: ${params.skillContext.contextDir}\nManifest: ${params.skillContext.manifestPath}\nRead the manifest's files and references for @-mentioned assets, reference images, and temporary images. Each send gets a unique directory; do not read other temp context directories.\n${buildSkillContextCleanupInstruction(params.skillContext.contextDir)}`
+      ? `[Skill Temporary Context]\nDirectory: ${params.skillContext.contextDir}\nManifest: ${params.skillContext.manifestPath}\nRead the manifest's files and references for @-mentioned assets, reference images, and temporary images. Use the copied files inside this directory for attachments; do not read original project temp paths. Each send gets a unique directory; do not read other temp context directories.\n${buildSkillContextCleanupInstruction(params.skillContext.contextDir)}`
       : "",
     `[Command]\n${params.payload.text}`,
   ]
@@ -404,6 +421,7 @@ export function useSilentAgentCommand() {
         skillContext: skillContext
           ? {
               contextDir: skillContext.contextDir,
+              files: skillContext.files,
               manifestPath: skillContext.manifestPath,
             }
           : undefined,
