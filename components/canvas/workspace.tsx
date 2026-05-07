@@ -30,6 +30,7 @@ import { flowStateSchema, type FlowState } from "@/lib/flow-schema";
 import {
   clearProjectImageFile,
   fetchProjectCanvasData,
+  fetchProjectFlow,
   fetchProjectImages,
   fetchProjectVideos,
   saveProjectFlow,
@@ -61,7 +62,24 @@ function isProjectAssetImage(project: ProjectDetail | null, imageId: string) {
   );
 }
 
-function toSerializableFlow(nodes: Node[], edges: Edge[], baseFlow: FlowState): FlowState | null {
+function toSerializableFlow(params: {
+  activeEpisodeId: string;
+  activeStoryboardId: string;
+  baseFlow: FlowState;
+  edges: Edge[];
+  nodes: Node[];
+  selectedEpisodeIds: string[];
+  selectedStoryboardIds: string[];
+}): FlowState | null {
+  const {
+    activeEpisodeId,
+    activeStoryboardId,
+    baseFlow,
+    edges,
+    nodes,
+    selectedEpisodeIds,
+    selectedStoryboardIds,
+  } = params;
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
   const edgeById = new Map(edges.map((edge) => [edge.id, edge]));
   const baseNodeIds = new Set(baseFlow.nodes.map((node) => node.id));
@@ -119,6 +137,12 @@ function toSerializableFlow(nodes: Node[], edges: Edge[], baseFlow: FlowState): 
           targetHandle: edge.targetHandle ?? undefined,
         })),
     ],
+    openState: {
+      activeEpisodeId,
+      activeStoryboardId,
+      selectedEpisodeIds,
+      selectedStoryboardIds,
+    },
   });
 
   return parsedFlow.success ? parsedFlow.data : null;
@@ -151,8 +175,12 @@ function CanvasWorkspaceInner() {
     clearSelectedMediaGridItem,
     commandStatuses,
     selectedEpisodeIds,
+    selectedStoryboardIds,
     selectedMediaGridItem,
     currentCanvasDataByEpisode,
+    activeEpisodeId,
+    activeStoryboardId,
+    applyProjectOpenState,
     mergeProjectCanvasData,
     setActiveEpisodeId,
     setCommandStatus,
@@ -437,6 +465,27 @@ function CanvasWorkspaceInner() {
 
   useEffect(() => {
     let active = true;
+
+    const loadProjectOpenState = async () => {
+      if (!currentProjectId) return;
+
+      try {
+        const flow = await fetchProjectFlow(currentProjectId);
+        if (active) applyProjectOpenState(flow.openState);
+      } catch {
+        // Opening state is optional; projects without flow metadata use defaults.
+      }
+    };
+
+    void loadProjectOpenState();
+
+    return () => {
+      active = false;
+    };
+  }, [applyProjectOpenState, currentProjectId]);
+
+  useEffect(() => {
+    let active = true;
     const episodeIds = activeEpisodeKey ? activeEpisodeKey.split(",") : [];
 
     const loadCanvasData = async () => {
@@ -467,7 +516,15 @@ function CanvasWorkspaceInner() {
     if (!currentCanvasData) return;
     if (episodeCommandLoading) return;
 
-    const flow = toSerializableFlow(nodes, edges, currentCanvasData.data.flow);
+    const flow = toSerializableFlow({
+      activeEpisodeId,
+      activeStoryboardId,
+      baseFlow: currentCanvasData.data.flow,
+      edges,
+      nodes,
+      selectedEpisodeIds: activeEpisodeIds,
+      selectedStoryboardIds,
+    });
     if (!flow) return;
 
     const timeoutId = window.setTimeout(() => {
@@ -479,7 +536,16 @@ function CanvasWorkspaceInner() {
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [currentCanvasData, edges, episodeCommandLoading, nodes]);
+  }, [
+    activeEpisodeId,
+    activeEpisodeIds,
+    activeStoryboardId,
+    currentCanvasData,
+    edges,
+    episodeCommandLoading,
+    nodes,
+    selectedStoryboardIds,
+  ]);
 
   useEffect(() => {
     if (!currentProject || nodes.length === 0) return;

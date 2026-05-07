@@ -28,6 +28,24 @@ import {
   selectStoryboardAssetIds,
 } from "./shared";
 
+export async function getProjectFlow(projectId: string): Promise<
+  { success: true; flow: FlowState } | { success: false; error: string }
+> {
+  try {
+    const projectDir = getProjectDir(projectId);
+    const flowJsonPath = path.resolve(projectDir, "flow.json");
+    assertSafeProjectPath(flowJsonPath);
+
+    const flow = await readOrCreateProjectFlow(flowJsonPath);
+    return { success: true, flow };
+  } catch (err) {
+    if (err instanceof Error) {
+      return { success: false, error: err.message };
+    }
+    return { success: false, error: "UNKNOWN_ERROR" };
+  }
+}
+
 export async function getProjectCanvasData(params: {
   projectId: string;
   episodeId: string;

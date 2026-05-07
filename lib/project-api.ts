@@ -138,6 +138,18 @@ export async function fetchProjectCanvasData(
   );
 }
 
+export async function fetchProjectFlow(projectId: string): Promise<FlowState> {
+  const data = await fetchJsonOnce<{ flow?: FlowState }>(
+    `/api/projects/${encodeURIComponent(projectId)}/flow`,
+  );
+
+  if (!data.flow) {
+    throw new Error("PROJECT_FLOW_NOT_FOUND");
+  }
+
+  return data.flow;
+}
+
 export async function saveProjectFlow(projectId: string, flow: FlowState): Promise<FlowState> {
   const data = await readJsonResponse<{ flow?: FlowState }>(
     await fetch(`/api/projects/${encodeURIComponent(projectId)}/flow`, {

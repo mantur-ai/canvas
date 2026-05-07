@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { flowStateSchema } from "@/lib/flow-schema";
 import {
   getProjectCanvasData,
+  getProjectFlow,
   normalizeProjectStoryboardAssets,
   saveProjectFlow,
 } from "@/lib/services/project-service";
@@ -18,7 +19,12 @@ export async function GET(
     const { projectId } = await context.params;
     const { searchParams } = new URL(request.url);
     const episodeId = searchParams.get("episodeId");
-    if (!episodeId) return toErrorResponse();
+    if (!episodeId) {
+      const result = await getProjectFlow(projectId);
+      if (!result.success) return toErrorResponse();
+
+      return NextResponse.json({ flow: result.flow });
+    }
 
     const result = await getProjectCanvasData({ projectId, episodeId });
     if (!result.success) return toErrorResponse();

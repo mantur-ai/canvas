@@ -38,18 +38,30 @@ const flowEdgeSchema = z.object({
   style: z.record(z.string(), jsonValueSchema).optional(),
 });
 
+const flowOpenStateSchema = z
+  .object({
+    activeEpisodeId: z.string().default(""),
+    activeStoryboardId: z.string().default(""),
+    selectedEpisodeIds: z.array(z.string()).default([]),
+    selectedStoryboardIds: z.array(z.string()).default([]),
+  })
+  .default({
+    activeEpisodeId: "",
+    activeStoryboardId: "",
+    selectedEpisodeIds: [],
+    selectedStoryboardIds: [],
+  });
+
 export const flowStateSchema = z.object({
   nodes: z.array(flowNodeSchema),
   edges: z.array(flowEdgeSchema),
+  openState: flowOpenStateSchema,
 });
 
 export type FlowState = z.infer<typeof flowStateSchema>;
+export type FlowOpenState = FlowState["openState"];
 
 export const initialFlowState = flowStateSchema.parse({
-  nodes: [
-
-  ],
-  edges: [
-
-  ],
+  nodes: [],
+  edges: [],
 });

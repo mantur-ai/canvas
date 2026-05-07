@@ -13,6 +13,10 @@ export async function getProjectCanvasData(
   return canvasService.getProjectCanvasData(params);
 }
 
+export async function getProjectFlow(projectId: string) {
+  return canvasService.getProjectFlow(projectId);
+}
+
 export async function normalizeProjectStoryboardAssets(
   params: Parameters<typeof canvasService.normalizeProjectStoryboardAssets>[0],
 ) {
