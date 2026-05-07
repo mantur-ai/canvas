@@ -18,10 +18,10 @@ export function StoryboardVideoNode({ data, id, selected }: NodeProps<Storyboard
     <div className={cn("relative", NODE_WIDTH_CLASS)}>
       <Handle type="target" position={Position.Left} className="bg-primary!" />
       <div className="flex max-w-62.5 items-center gap-2 pb-2">
-        <span className="shrink-0 text-xs font-bold leading-none text-foreground">
+        <span className="shrink-0 text-xs font-bold text-foreground">
           {t("storyboardVideo.title")}
         </span>
-        <span className="truncate  rounded-3xl border border-border bg-primary px-1.5 py-0.5 text-xs leading-none text-foreground shadow-sm">
+        <span className="truncate  rounded-3xl border border-border bg-primary px-1.5 py-0.5 text-xs text-foreground shadow-sm">
           {data.title}
         </span>
       </div>
