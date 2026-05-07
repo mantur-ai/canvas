@@ -18,10 +18,10 @@ export function StoryboardImageNode({ data, id, selected }: NodeProps<Storyboard
     <div className={cn("relative", NODE_WIDTH_CLASS)}>
       <Handle type="target" position={Position.Left} className="bg-primary!" />
       <div className="flex max-w-62.5 items-center gap-2 pb-2">
-        <span className="shrink-0 text-xs font-semibold leading-none text-foreground">
+        <span className="shrink-0 text-xs font-semibold text-foreground">
           {t("storyboardImage.title")}
         </span>
-        <span className="truncate rounded-3xl border border-border  px-1.5 py-0.5 text-xs leading-none text-foreground shadow-sm bg-primary ">
+        <span className="truncate rounded-3xl border border-border  px-1.5 py-0.5 text-xs text-foreground shadow-sm bg-primary ">
           {data.title}
         </span>
       </div>

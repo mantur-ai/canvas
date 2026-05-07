@@ -129,12 +129,15 @@ export function StoryboardListNode({ data, selected }: NodeProps<StoryboardListN
 
   return (
     <div className={cn("relative", NODE_WIDTH_CLASS)}>
-      <div className="flex max-w-62.5 items-center justify-between gap-2 pb-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="text-xs font-bold leading-none text-foreground">
+      <div className="flex w-full max-w-62.5 items-center gap-2 pb-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="shrink-0 text-xs font-bold text-foreground">
             {t("storyboardList.title")}
           </span>
-          <span className="truncate rounded-3xl border border-border bg-primary px-1.5 py-0.5 text-xs leading-none text-foreground shadow-sm">
+          <span
+            className="block min-w-0 max-w-full flex-1 truncate rounded-3xl border border-border bg-primary px-1.5 py-0.5 text-xs text-foreground shadow-sm"
+            title={data.episodeName}
+          >
             {data.episodeName}
           </span>
         </div>
@@ -190,14 +193,15 @@ export function StoryboardListNode({ data, selected }: NodeProps<StoryboardListN
                         : "border-border hover:bg-accent",
                     )}
                   >
-                    <div className="mb-1 flex items-center gap-2">
+                    <div className="mb-1 flex min-w-0 items-center gap-2">
                       <span
                         className={cn(
-                          "text-xs font-medium px-2 py-0.5 rounded-br-xl",
+                          "block max-w-full truncate rounded-br-xl px-2 py-0.5 text-xs font-medium",
                           selected
                             ? "bg-primary text-primary-foreground"
                             : "bg-card text-muted-foreground group-hover:bg-muted-foreground/20",
                         )}
+                        title={storyboardName}
                       >
                         {storyboardName}
                       </span>

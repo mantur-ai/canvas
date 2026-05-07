@@ -12,12 +12,15 @@ import {
 } from "@xyflow/react";
 import { v4 as createUuid } from "uuid";
 import { create } from "zustand";
-import { initialFlowState } from "@/lib/flow-schema";
+import { initialFlowState, type FlowOpenState } from "@/lib/flow-schema";
 import type { ProjectCanvasData, ProjectCommandStatus } from "@/lib/project-api";
 import type { ProjectDetail, ProjectListItem } from "@/lib/project-types";
 import type { ProjectImageAsset, ProjectStoryboard, ProjectVideoAsset } from "@/lib/project-types";
 
 const STORYBOARD_LIST_MAX_HEIGHT = 420;
+const STORYBOARD_MEDIA_NODE_WIDTH = 250;
+const STORYBOARD_MEDIA_NODE_HEIGHT = 300;
+const STORYBOARD_MEDIA_NODE_HORIZONTAL_GAP = 70;
 const STORYBOARD_NODE_VERTICAL_GAP = 360;
 const SELECTED_STORYBOARD_LIMIT = 3;
 const EPISODE_NODE_VERTICAL_GAP = Math.max(
@@ -71,6 +74,14 @@ export type SelectedMediaGridItem = {
 type CanvasNodeData = Record<string, unknown>;
 type CanvasNode = Node<CanvasNodeData>;
 type CanvasEdge = Edge;
+type CanvasPosition = {
+  x: number;
+  y: number;
+};
+type CanvasRect = CanvasPosition & {
+  height: number;
+  width: number;
+};
 type CurrentCanvasData = {
   projectId: string;
   episodeId: string;
@@ -105,6 +116,7 @@ type CanvasState = {
   updateVideoAsset: (video: ProjectVideoAsset) => void;
   addNode: (label: string) => void;
   addStoryboard: (episodeId: string, afterStoryboardId?: string) => void;
+  applyProjectOpenState: (openState: FlowOpenState) => void;
   clearSelectedMediaGridItem: () => void;
   clearCommandStatus: (gridId: string) => void;
   clearCurrentProject: () => void;
@@ -180,8 +192,47 @@ const getStoryboardDisplayName = (storyboard: ProjectStoryboard, index: number) 
 const resolveNodePosition = (
   data: ProjectCanvasData,
   nodeId: string,
-  fallback: { x: number; y: number },
+  fallback: CanvasPosition,
 ) => data.flow.nodes.find((flowNode) => flowNode.id === nodeId)?.position ?? fallback;
+
+const toMediaNodeRect = (position: CanvasPosition): CanvasRect => ({
+  ...position,
+  height: STORYBOARD_MEDIA_NODE_HEIGHT,
+  width: STORYBOARD_MEDIA_NODE_WIDTH,
+});
+
+const rectsOverlap = (first: CanvasRect, second: CanvasRect) =>
+  first.x < second.x + second.width &&
+  first.x + first.width > second.x &&
+  first.y < second.y + second.height &&
+  first.y + first.height > second.y;
+
+function collidesWithMediaNode(position: CanvasPosition, occupiedRects: CanvasRect[]) {
+  const rect = toMediaNodeRect(position);
+  return occupiedRects.some((occupiedRect) => rectsOverlap(rect, occupiedRect));
+}
+
+function findOpenMediaNodePosition(
+  preferred: CanvasPosition,
+  fallback: CanvasPosition,
+  occupiedRects: CanvasRect[],
+) {
+  let adjusted = collidesWithMediaNode(preferred, occupiedRects);
+  let candidate = adjusted ? fallback : preferred;
+
+  // Legacy or manually dragged flow data can put media nodes on top of each other.
+  // Nudge only colliding nodes so valid user layouts stay intact.
+  while (collidesWithMediaNode(candidate, occupiedRects)) {
+    adjusted = true;
+    candidate = {
+      x: fallback.x,
+      y: candidate.y + STORYBOARD_NODE_VERTICAL_GAP,
+    };
+  }
+
+  occupiedRects.push(toMediaNodeRect(candidate));
+  return { adjusted, position: candidate };
+}
 
 const findEpisodeIdByStoryboard = (
   canvasDataByEpisode: CanvasDataByEpisode,
@@ -229,6 +280,7 @@ const updateFlowFromCanvasNodes = (
             flow: {
               nodes: nextFlowNodes,
               edges: canvasData.data.flow.edges,
+              openState: canvasData.data.flow.openState,
             },
           },
         },
@@ -265,6 +317,7 @@ const buildStoryboardCanvas = (
     },
   ];
   const edges: CanvasEdge[] = [];
+  const occupiedMediaRects: CanvasRect[] = [];
 
   // Only selected storyboards expand into media nodes, keeping the canvas focused.
   data.storyboards
@@ -279,12 +332,31 @@ const buildStoryboardCanvas = (
         storyboardIndex >= 0 ? storyboardIndex : index,
       );
       const laneY = listPosition.y + index * STORYBOARD_NODE_VERTICAL_GAP;
+      const imageFallbackPosition = { x: listPosition.x + 320, y: laneY };
+      const imageResult = findOpenMediaNodePosition(
+        resolveNodePosition(data, imageNodeId, imageFallbackPosition),
+        imageFallbackPosition,
+        occupiedMediaRects,
+      );
+      const imagePosition = imageResult.position;
+      const videoFallbackPosition = {
+        x: imagePosition.x + STORYBOARD_MEDIA_NODE_WIDTH + STORYBOARD_MEDIA_NODE_HORIZONTAL_GAP,
+        y: imagePosition.y,
+      };
+      const videoResult = findOpenMediaNodePosition(
+        imageResult.adjusted
+          ? videoFallbackPosition
+          : resolveNodePosition(data, videoNodeId, videoFallbackPosition),
+        videoFallbackPosition,
+        occupiedMediaRects,
+      );
+      const videoPosition = videoResult.position;
 
       nodes.push(
         {
           id: imageNodeId,
           type: "storyboard-image-node",
-          position: resolveNodePosition(data, imageNodeId, { x: listPosition.x + 320, y: laneY }),
+          position: imagePosition,
           data: {
             sceneId: storyboard.id,
             title: storyboardName,
@@ -297,7 +369,7 @@ const buildStoryboardCanvas = (
         {
           id: videoNodeId,
           type: "storyboard-video-node",
-          position: resolveNodePosition(data, videoNodeId, { x: listPosition.x + 640, y: laneY }),
+          position: videoPosition,
           data: {
             sceneId: storyboard.id,
             title: storyboardName,
@@ -405,6 +477,17 @@ const resolveStoryboardSelection = (
     : getDefaultStoryboardSelection(selectedEpisodeIds, canvasDataByEpisode);
 };
 
+function resolveEpisodeSelection(project: ProjectDetail | null, selectedEpisodeIds: string[]) {
+  const availableEpisodeIds = new Set(project?.episodes.map((episode) => episode.id) ?? []);
+  const visibleEpisodeIds = selectedEpisodeIds.filter((episodeId) =>
+    availableEpisodeIds.has(episodeId),
+  );
+
+  return visibleEpisodeIds.length > 0
+    ? visibleEpisodeIds
+    : (project?.episodes.slice(0, 3).map((episode) => episode.id) ?? []);
+}
+
 export const useCanvasStore = create<CanvasState>((set) => ({
   commandStatuses: {},
   currentProject: null,
@@ -460,6 +543,47 @@ export const useCanvasStore = create<CanvasState>((set) => ({
         edges: nextCanvas.edges.length > 0 ? nextCanvas.edges : state.edges,
         nodes: nextCanvas.nodes.length > 0 ? nextCanvas.nodes : state.nodes,
         selectedMediaGridItem,
+      };
+    }),
+  applyProjectOpenState: (openState) =>
+    set((state) => {
+      const selectedEpisodeIds = resolveEpisodeSelection(
+        state.currentProject,
+        openState.selectedEpisodeIds,
+      );
+      const hasLoadedSelectedEpisode = selectedEpisodeIds.some(
+        (episodeId) => state.currentCanvasDataByEpisode[episodeId],
+      );
+      const selectedStoryboardIds = hasLoadedSelectedEpisode
+        ? resolveStoryboardSelection(
+            selectedEpisodeIds,
+            state.currentCanvasDataByEpisode,
+            openState.selectedStoryboardIds,
+          )
+        : openState.selectedStoryboardIds;
+      const nextCanvas = buildSelectedEpisodesCanvas(
+        state.currentProject,
+        selectedEpisodeIds,
+        state.currentCanvasDataByEpisode,
+        selectedStoryboardIds,
+        state.commandStatuses,
+      );
+      const activeEpisodeId = selectedEpisodeIds.includes(openState.activeEpisodeId)
+        ? openState.activeEpisodeId
+        : (selectedEpisodeIds[0] ?? "");
+      const activeStoryboardId = selectedStoryboardIds.includes(openState.activeStoryboardId)
+        ? openState.activeStoryboardId
+        : (selectedStoryboardIds[0] ?? "");
+
+      return {
+        activeEpisodeId,
+        activeStoryboardId,
+        currentCanvasData: nextCanvas.currentCanvasData ?? state.currentCanvasData,
+        edges: nextCanvas.edges.length > 0 ? nextCanvas.edges : state.edges,
+        nodes: nextCanvas.nodes.length > 0 ? nextCanvas.nodes : state.nodes,
+        selectedEpisodeIds,
+        selectedMediaGridItem: null,
+        selectedStoryboardIds,
       };
     }),
   clearSelectedMediaGridItem: () => set({ selectedMediaGridItem: null }),
@@ -677,11 +801,15 @@ export const useCanvasStore = create<CanvasState>((set) => ({
         [episodeId]: currentCanvasData,
       };
       const selectedEpisodeIds = state.selectedEpisodeIds;
-      const selectedStoryboardIds = resolveStoryboardSelection(
+      const resolvedStoryboardIds = resolveStoryboardSelection(
         selectedEpisodeIds,
         nextCanvasDataByEpisode,
         state.selectedStoryboardIds,
       );
+      const selectedStoryboardIds =
+        resolvedStoryboardIds.length > 0 || state.selectedStoryboardIds.length === 0
+          ? resolvedStoryboardIds
+          : state.selectedStoryboardIds;
       const nextCanvas = buildSelectedEpisodesCanvas(
         state.currentProject,
         selectedEpisodeIds,
@@ -719,11 +847,15 @@ export const useCanvasStore = create<CanvasState>((set) => ({
           ]),
         ),
       };
-      const selectedStoryboardIds = resolveStoryboardSelection(
+      const resolvedStoryboardIds = resolveStoryboardSelection(
         state.selectedEpisodeIds,
         nextCanvasDataByEpisode,
         state.selectedStoryboardIds,
       );
+      const selectedStoryboardIds =
+        resolvedStoryboardIds.length > 0 || state.selectedStoryboardIds.length === 0
+          ? resolvedStoryboardIds
+          : state.selectedStoryboardIds;
       const nextCanvas = buildSelectedEpisodesCanvas(
         state.currentProject,
         state.selectedEpisodeIds,

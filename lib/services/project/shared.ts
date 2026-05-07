@@ -42,7 +42,7 @@ export const IMAGE_ASSET_FIELDS = [
 ] as const;
 export const IMAGE_ASSET_TYPES = new Set(["characters", "scenes", "props", "voices", "videos", "reference"]);
 export const PROJECT_ASSET_IMAGE_TYPES = new Set(["characters", "scenes", "props", "voices", "videos"]);
-export const EMPTY_FLOW_STATE: FlowState = { nodes: [], edges: [] };
+export const EMPTY_FLOW_STATE: FlowState = flowStateSchema.parse({ nodes: [], edges: [] });
 export const execFileAsync = promisify(execFile);
 export const FFMPEG_COMMAND = ffmpegStaticPath ?? "ffmpeg";
 export const FFPROBE_COMMAND = ffprobeStatic.path || "ffprobe";
