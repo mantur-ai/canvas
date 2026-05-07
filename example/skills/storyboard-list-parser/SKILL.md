@@ -71,6 +71,8 @@ All generated text in the payload — every storyboard `name`, `description`, `p
 
 When the storyboard `prompt` or `videoPrompt` describes the scene/environment context, do **not** embed character figures or people in the scene description itself. Scene context must describe environment, layout, lighting, time of day, weather, atmosphere, and props only. Reference any characters present in the beat explicitly via `@character_name` (or by named subject) outside of the scene-environment portion of the prompt — never as part of the scene description.
 
+When a storyboard beat clearly matches one `scenes` asset from `images/images.json`, include that scene asset's exact `name` in both `prompt` and `videoPrompt` as plain text, for example `场景参考：岳家客厅` or `Scene reference: Yue family living room`. This makes the backend bind the generated scene reference image to the storyboard. Do not write UUID markers, paths, or `@图片N` labels into stored prompts.
+
 Before submitting the storyboard list, review every `prompt` and `videoPrompt`: any scene/environment phrase must be an empty environment description. Remove words that place people or character bodies inside the environment, including crowd, passerby, silhouette, figure, protagonist, he/she/they, man, woman, child, 人、人群、路人、身影、人物、男人、女人、孩子、主角、他、她、他们. Character presence belongs only in the action/subject part of the beat using the canonical character asset name.
 
 ## Character Naming Rule (Non-Dialogue References)

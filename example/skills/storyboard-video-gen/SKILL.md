@@ -117,6 +117,7 @@ If the provider response has no task ID and no video URL, report failure with th
 - **`publicUrl` is the preferred reference value when the provider accepts URLs.** For every `@`-mentioned reference, read its entry in `context.json`. If the entry has a non-empty `publicUrl`, pass that URL to the provider in the reference image field. The presence of a `publicUrl` means the image bed step has already been done — skip uploading, but never skip passing the URL through to the model. Falling back to a copied local file (or to the asset name as plain text) should only happen when `publicUrl` is missing or empty.
 - For copied reference files, use them only in the provider request shape supported by the selected video model — and only when `publicUrl` is unavailable.
 - For reference URLs already supplied by command context (not via `context.json`), pass those URLs through unchanged when the provider accepts URLs.
+- If a `context.json` reference has `kind: "image"` and its label/name/category indicates a scene asset, include it as a scene/background reference. Describe its purpose as environment, layout, lighting, color, and atmosphere continuity only; do not treat it as a character or action subject.
 - If the provider requires public URLs and a reference has no usable `publicUrl` in `context.json`, call `upload-images` for that image ID; `upload-images` must use the backend `resolve-public-url` / `store-public-url` API and must not use `image-url-manifest.json`. Pass the URL it returns into the provider request — `upload-images` returns the URL whether it just uploaded or reused an existing one.
 - Do not read project image files by yourself.
 
@@ -133,6 +134,7 @@ For prompt markers:
 Build one final video prompt for the provider:
 
 - Preserve the user's action order, characters, setting, and mood.
+- When a scene/background reference is available, mention it in the final provider prompt as `场景背景参考：@图片N（<scene name>）` or `Scene background reference: @Image N (<scene name>)`, limited to environment continuity.
 - Merge `[Project Recipe Pack]` as style continuity without replacing the actual action.
 - Include supplied video options naturally, especially duration and shot type.
 - Emphasize motion, camera movement, expression changes, light changes, atmosphere, and sound.
