@@ -10,8 +10,9 @@ Use this skill when the requested feature is generating asset reference images f
 ## Scope
 
 - Work only inside `{projectRoot}/projects/{projectId}/`.
-- Read only `{projectRoot}/projects/currentProject.json`, `{projectRoot}/projects/{projectId}/config.json`, and the single `[Skill Temporary Context]` directory supplied in the command.
+- Read only `{projectRoot}/projects/currentProject.json`, `{projectRoot}/projects/{projectId}/project.json`, `{projectRoot}/projects/{projectId}/config.json`, and the single `[Skill Temporary Context]` directory supplied in the command.
 - Use `currentProject.json` only to resolve the current project ID when the trigger context does not provide one.
+- Use `project.json` only to read project generation settings: `aspectRatio` and `resolution`.
 - Use the supplied skill temporary context directory to read and analyze the actual `@`-mentioned asset files, reference image files, and temporary image files for this send.
 - Every send receives a unique temporary context directory. Never use a fixed temp path, and never read sibling or older `skill-context` directories.
 - Do not read, scan, validate, analyze, create, update, or delete any project file that is not explicitly listed above.
@@ -56,10 +57,11 @@ The following prompt patterns trigger this skill. Match any of these:
 Before any generation, validate:
 
 1. Resolve `projectId` from trigger context or `{projectRoot}/projects/currentProject.json`.
-2. `{projectRoot}/projects/{projectId}/config.json` exists and contains `imageModel` with `apiKey` and `example` (curl template). Legacy fallback fields are allowed only for old projects.
-3. The trigger context includes a target asset ID and prompt. If either is missing, stop and report the missing context.
-4. If the prompt contains `@` references, use the supplied `[Skill Temporary Context]` directory and its `context.json` manifest to inspect those files. If a referenced image has no copied file and no usable URL, use its `name`/`label` as a text-only reference instead of failing.
-5. If any gate check fails, stop and report exactly what is missing. Do not proceed.
+2. `{projectRoot}/projects/{projectId}/project.json` exists and contains `aspectRatio` and `resolution`.
+3. `{projectRoot}/projects/{projectId}/config.json` exists and contains `imageModel` with `apiKey` and `example` (curl template). Legacy fallback fields are allowed only for old projects.
+4. The trigger context includes a target asset ID and prompt. If either is missing, stop and report the missing context.
+5. If the prompt contains `@` references, use the supplied `[Skill Temporary Context]` directory and its `context.json` manifest to inspect those files. If a referenced image has no copied file and no usable URL, use its `name`/`label` as a text-only reference instead of failing.
+6. If any gate check fails, stop and report exactly what is missing. Do not proceed.
 
 ## Read Config Procedure
 
@@ -71,9 +73,10 @@ Before any generation, validate:
 3. Do not require `selectedModel` or `selectedModels` when `imageModel` exists.
 4. Extract `apiKey` and `example` (the curl command template).
 5. The `example` field contains a working curl template. Treat it as the source of truth for endpoint, method, headers, model, and provider-specific request shape.
-6. Replace only the prompt, auth placeholder, image references, size/aspect/resolution when applicable, and other UI-supplied generation options.
-7. Replace `$ARK_API_KEY` or any placeholder auth value with the actual `apiKey`.
-8. If the API supports image-to-image mode, use only reference URLs supplied in trigger context or copied files from the supplied skill context. Do not resolve references from any project file.
+6. Read `project.json.aspectRatio` and `project.json.resolution`; these are the authoritative generation format settings.
+7. Replace only the prompt, auth placeholder, image references, size/aspect/resolution when applicable, and other UI-supplied generation options.
+8. Replace `$ARK_API_KEY` or any placeholder auth value with the actual `apiKey`.
+9. If the API supports image-to-image mode, use only reference URLs supplied in trigger context or copied files from the supplied skill context. Do not resolve references from any project file.
 
 ## Secret Handling
 
@@ -94,6 +97,8 @@ For each asset to generate:
    - Start from the `example` curl in the selected image model from `config.json`.
    - Replace the `prompt` field with the trigger/user prompt.
    - Merge `[Project Recipe Pack]` into the final prompt without overwriting the user's specific subject/action instructions.
+   - If the target asset category/type is `scenes`, enforce an empty-environment prompt: remove or override any instruction to generate people, characters, human figures, silhouettes, crowds, or passersby. Add this constraint to the final provider prompt: `Scene environment only. No people, no characters, no human figures, no silhouettes, no crowds.`
+   - Apply `project.json.aspectRatio` and `project.json.resolution` to the provider request. Override existing fields such as `aspectRatio`, `aspect_ratio`, `ratio`, `size`, `imageSize`, or `resolution` when present. If the provider template has no supported field, add the format to the final prompt as plain text: `Output aspect ratio: <aspectRatio>. Output resolution: <resolution>.`
    - Inject the `apiKey` into the authentication header by reading it from `config.json` inside the same bash tool call that runs `curl` (e.g. `KEY=$(jq -r '.imageModel.apiKey' ...) && curl -H "Authorization: Bearer $KEY" ...`) — never paste a visible key value into a `curl` tool call, regardless of how complete it looks, and never call the provider via Python or any other runtime. See **Secret Handling**.
    - Use only context-supplied reference URLs, copied files from the skill context, or options.
    - **`publicUrl` is the preferred reference value when the provider accepts URLs.** For every `@`-mentioned reference, read `[Skill Temporary Context]/context.json`. If the reference's entry has a non-empty `publicUrl`, pass that URL to the provider in the reference image field. The fact that a `publicUrl` is already present means the image bed step has already been done — skip uploading, but never skip passing the URL through to the model. Falling back to the local file or to the asset name should only happen when `publicUrl` is missing or empty.
