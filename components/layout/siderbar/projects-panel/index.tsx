@@ -163,6 +163,8 @@ function EditProjectDialog({
         description: values.description.trim(),
         aspectRatio: values.aspectRatio,
         resolution: values.resolution,
+        generateAudio: values.generateAudio,
+        generateSubtitles: values.generateSubtitles,
       })
 
       if (result.success) {
@@ -207,6 +209,8 @@ function EditProjectDialog({
               description: project.description,
               aspectRatio: project.aspectRatio,
               resolution: project.resolution,
+              generateAudio: project.generateAudio,
+              generateSubtitles: project.generateSubtitles,
             }}
             onCancel={onClose}
             onSaved={handleSave}

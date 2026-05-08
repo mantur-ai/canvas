@@ -7,6 +7,7 @@ import { useForm, useWatch } from "react-hook-form"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -41,9 +42,14 @@ type AddScriptFormValues = {
   description: string
   aspectRatio: string
   resolution: string
+  generateAudio: boolean
+  generateSubtitles: boolean
 }
 
-export type ProjectEditableFormValues = Pick<AddScriptFormValues, "description" | "aspectRatio" | "resolution">
+export type ProjectEditableFormValues = Pick<
+  AddScriptFormValues,
+  "description" | "aspectRatio" | "resolution" | "generateAudio" | "generateSubtitles"
+>
 
 type BaseFormProps = {
   onCancel: () => void
@@ -139,6 +145,41 @@ function ProjectEditableFields({
         )}
       />
 
+      <div className="mb-5 grid gap-3 rounded-lg border border-border bg-muted/30 p-3">
+        <FormField
+          control={control}
+          name="generateAudio"
+          render={({ field }) => (
+            <FormItem className="flex items-center gap-3">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={(checked) => field.onChange(checked === true)}
+                />
+              </FormControl>
+              <FormLabel className="text-sm font-normal">{t("addScript.generateAudio")}</FormLabel>
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={control}
+          name="generateSubtitles"
+          render={({ field }) => (
+            <FormItem className="flex items-center gap-3">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={(checked) => field.onChange(checked === true)}
+                />
+              </FormControl>
+              <FormLabel className="text-sm font-normal">
+                {t("addScript.generateSubtitles")}
+              </FormLabel>
+            </FormItem>
+          )}
+        />
+      </div>
+
       <FormField
         control={control}
         name="description"
@@ -228,6 +269,8 @@ export function AddScriptForm(props: AddScriptFormProps) {
       description: isEditMode ? props.initialValues.description : "",
       aspectRatio: isEditMode ? props.initialValues.aspectRatio : "16:9",
       resolution: isEditMode ? props.initialValues.resolution : "1080p",
+      generateAudio: isEditMode ? props.initialValues.generateAudio : true,
+      generateSubtitles: isEditMode ? props.initialValues.generateSubtitles : true,
     },
     mode: "onChange",
   })
@@ -301,6 +344,8 @@ export function AddScriptForm(props: AddScriptFormProps) {
           description: values.description.trim(),
           aspectRatio: values.aspectRatio,
           resolution: values.resolution,
+          generateAudio: values.generateAudio,
+          generateSubtitles: values.generateSubtitles,
         })
       } finally {
         setCreating(false)
@@ -324,6 +369,8 @@ export function AddScriptForm(props: AddScriptFormProps) {
         description: values.description.trim(),
         aspectRatio: values.aspectRatio,
         resolution: values.resolution,
+        generateAudio: values.generateAudio,
+        generateSubtitles: values.generateSubtitles,
       })
 
       if (result.success) {

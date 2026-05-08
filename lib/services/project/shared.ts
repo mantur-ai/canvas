@@ -107,6 +107,10 @@ export function readBoolean(value: unknown): boolean {
   return typeof value === "boolean" ? value : false;
 }
 
+export function readBooleanDefault(value: unknown, fallback: boolean): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
+
 export function readEpisodeCount(value: unknown): number {
   if (!Array.isArray(value)) return 0;
   return value.filter((episode) => isRecord(episode) && typeof episode.id === "string").length;
@@ -470,6 +474,11 @@ export function toProjectDetail(value: unknown): ProjectDetail | null {
     description: readString(value.description),
     aspectRatio: readString(value.aspectRatio),
     resolution: readString(value.resolution),
+    generateAudio: readBooleanDefault(value.generateAudio, readBooleanDefault(value.enableSound, true)),
+    generateSubtitles: readBooleanDefault(
+      value.generateSubtitles,
+      readBooleanDefault(value.enableSubtitles, true),
+    ),
     episodes: readEpisodes(value.episodes),
     assets: readAssets(value.assets),
     assetsParsed: readBoolean(value.assetsParsed),

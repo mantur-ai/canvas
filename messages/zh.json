@@ -571,6 +571,8 @@
       "aspectRatioDescription": "选择项目默认画布比例，后续生成分镜和视频资产时会沿用该比例。",
       "resolution": "清晰度",
       "resolutionDescription": "选择项目默认输出清晰度，清晰度越高通常会占用更多生成和存储资源。",
+      "generateAudio": "生成声音",
+      "generateSubtitles": "生成字幕",
       "cancel": "取消",
       "confirm": "确定",
       "creating": "创建中...",

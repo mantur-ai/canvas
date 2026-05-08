@@ -571,6 +571,8 @@
       "aspectRatioDescription": "Choose the default canvas ratio for storyboards and video assets created from this project.",
       "resolution": "Resolution",
       "resolutionDescription": "Choose the default output resolution. Higher resolution usually uses more generation and storage resources.",
+      "generateAudio": "Generate audio",
+      "generateSubtitles": "Generate subtitles",
       "cancel": "Cancel",
       "confirm": "Confirm",
       "creating": "Creating...",

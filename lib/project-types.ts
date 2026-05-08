@@ -64,6 +64,8 @@ export type ProjectDetail = {
   description: string;
   aspectRatio: string;
   resolution: string;
+  generateAudio: boolean;
+  generateSubtitles: boolean;
   episodes: ProjectEpisode[];
   assets: ProjectAssets;
   assetsParsed: boolean;

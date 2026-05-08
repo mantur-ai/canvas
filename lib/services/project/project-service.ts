@@ -127,6 +127,8 @@ export async function updateProject(params: {
   description: string;
   aspectRatio: string;
   resolution: string;
+  generateAudio: boolean;
+  generateSubtitles: boolean;
 }): Promise<{ success: true; project: ProjectDetail } | { success: false; error: string }> {
   try {
     const project = await readProjectDetail(params.projectId);
@@ -139,6 +141,8 @@ export async function updateProject(params: {
       description: params.description,
       aspectRatio: params.aspectRatio,
       resolution: params.resolution,
+      generateAudio: params.generateAudio,
+      generateSubtitles: params.generateSubtitles,
     };
     await writeProjectDetail(nextProject);
     const currentProject = await readCurrentProjectDetail().catch(() => null);
@@ -180,6 +184,8 @@ export async function createProject(params: {
   description: string;
   aspectRatio: string;
   resolution: string;
+  generateAudio: boolean;
+  generateSubtitles: boolean;
 }): Promise<{ success: true; projectId: string } | { success: false; error: string }> {
   try {
     const projectId = createUuid();
@@ -196,6 +202,8 @@ export async function createProject(params: {
       description: params.description,
       aspectRatio: params.aspectRatio,
       resolution: params.resolution,
+      generateAudio: params.generateAudio,
+      generateSubtitles: params.generateSubtitles,
       episodes,
       assets: {
         characters: [],
