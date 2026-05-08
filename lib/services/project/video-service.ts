@@ -155,6 +155,7 @@ export async function storeGeneratedProjectVideo(params: {
   resultUrl: string;
   source?: string;
   status?: string;
+  storyboardId?: string;
   videoId: string;
 }): Promise<
   | { success: true; video: ProjectVideoAsset; videos: ProjectVideoAsset[] }
@@ -215,6 +216,14 @@ export async function storeGeneratedProjectVideo(params: {
       ? currentVideos.map((video) => (video.id === params.videoId ? nextVideo : video))
       : [nextVideo, ...currentVideos];
     await writeFile(videosJsonPath, JSON.stringify(videos, null, 2), "utf8");
+    if (params.storyboardId) {
+      const storyboardUpdate = await addProjectVideoToStoryboard({
+        projectId: params.projectId,
+        storyboardId: params.storyboardId,
+        videoId: params.videoId,
+      });
+      if (!storyboardUpdate.success) return storyboardUpdate;
+    }
 
     return { success: true, video: nextVideo, videos };
   } catch (err) {

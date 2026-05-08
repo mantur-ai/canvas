@@ -43,6 +43,7 @@ import { getSafeMediaSource } from "@/lib/media-src";
 import type { ProjectImageAsset } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
 import { useCanvasStore, type MediaItem } from "@/store/use-canvas-store";
+import { formatStoryboardMediaName } from "./media-name";
 
 const MEDIA_GRID_SCROLL_AREA_CLASS =
   "nodrag nowheel h-[16.625rem] w-full max-w-full overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-xl transition-[border-color,box-shadow,transform] duration-200";
@@ -594,6 +595,7 @@ export function MediaGrid({
   const [pendingDeleteItem, setPendingDeleteItem] = useState<MediaItem | null>(null);
   const [previewItemId, setPreviewItemId] = useState<string | null>(null);
   const hasActiveSelection = Boolean(selectedMediaGridItem);
+  const defaultMediaName = formatStoryboardMediaName(sceneTitle, addLabel);
   const handleAddMedia = () => {
     if (!currentProject) return;
     if (mediaType === "image") {
@@ -604,7 +606,7 @@ export function MediaGrid({
     void (async () => {
       try {
         const result = await createProjectVideo(currentProject.id, {
-          name: addLabel,
+          name: defaultMediaName,
           prompt: "",
           source: "manual",
         });
@@ -744,6 +746,7 @@ export function MediaGrid({
           open={createDialogOpen}
           projectAssets={currentProject.assets}
           projectId={currentProject.id}
+          defaultName={defaultMediaName}
         />
       ) : null}
       {currentProject ? (

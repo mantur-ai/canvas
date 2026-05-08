@@ -14,7 +14,7 @@ import { useCanvasStore } from "@/store/use-canvas-store";
 import { GlobalChatComposer, type GlobalChatAttachment } from "./global-chat-composer";
 import {
   extractAgentSessionId,
-  normalizeAgentStreamPreview,
+  getAgentStreamPreview,
   parseAgentOutput,
 } from "./parse-agent-output";
 import {
@@ -336,7 +336,7 @@ export function GlobalChatDrawer({ open, onClose }: GlobalChatDrawerProps) {
               updateMessage(
                 agentMessageId,
                 "",
-                normalizeAgentStreamPreview(stdout) ||
+                getAgentStreamPreview(resolvedCommand.streamKind, stdout) ||
                   t("commandReplies.executing", { name: selectedAgent.name }),
               );
             }

@@ -81,6 +81,34 @@ function encodeAttachmentMention(attachment: ChatWindowAttachment) {
   return `@{${attachment.id}}`;
 }
 
+function getEncodedMentionIds(text: string) {
+  return [...text.matchAll(ENCODED_MENTION_PATTERN)]
+    .map((match) => match[1] ?? "")
+    .filter(Boolean);
+}
+
+function mergeMentionAttachments(params: {
+  attachments: ChatWindowAttachment[];
+  mentionSource: ChatWindowAttachment[];
+  text: string;
+}) {
+  const mentionIds = new Set(getEncodedMentionIds(params.text));
+  const seenIds = new Set<string>();
+  const merged: ChatWindowAttachment[] = [];
+  const pushAttachment = (attachment: ChatWindowAttachment) => {
+    if (seenIds.has(attachment.id)) return;
+    seenIds.add(attachment.id);
+    merged.push(attachment);
+  };
+
+  params.attachments.forEach(pushAttachment);
+  params.mentionSource
+    .filter((attachment) => mentionIds.has(attachment.id))
+    .forEach(pushAttachment);
+
+  return merged;
+}
+
 function createInlineMentionNode(attachment: ChatWindowAttachment): JSONContent {
   return {
     type: "chatInlineTag",
@@ -586,9 +614,14 @@ export function ChatWindow({
             .join("\n")
         : "";
     const text = [textPrefix, serializePromptText(editor.getJSON())].filter(Boolean).join("\n");
+    const submittedAttachments = mergeMentionAttachments({
+      attachments: activeAttachments,
+      mentionSource,
+      text,
+    });
 
     onSubmit?.({
-      attachments: activeAttachments,
+      attachments: submittedAttachments,
       html: editor.getHTML(),
       text,
       videoOptions: showVideoOptions

@@ -27,6 +27,18 @@ export function normalizeAgentStreamPreview(raw: string) {
   return stripAnsi(raw).replace(AGENT_BANNER_PATTERN, "").replace(/\r\n/g, "\n");
 }
 
+export function getAgentStreamPreview(kind: AgentStreamKind, raw: string) {
+  const parsedOutput = parseAgentOutput(kind, raw);
+  if (parsedOutput.final) return parsedOutput.final;
+
+  const normalized = normalizeAgentStreamPreview(raw).trim();
+  if (kind === "opencode") {
+    return parsedOutput.process || normalized.split(/\r?\n/).slice(-3).join("\n");
+  }
+
+  return normalized;
+}
+
 function formatCodexProcessItem(item: {
   aggregated_output?: string;
   command?: string;
@@ -89,6 +101,56 @@ function collectTextFromContent(content: unknown): string {
   return "";
 }
 
+function collectTextFromParts(parts: unknown): string {
+  if (!Array.isArray(parts)) return "";
+
+  return parts
+    .map((part) => {
+      if (!isJsonObject(part)) return "";
+      const partType = typeof part.type === "string" ? part.type.toLowerCase() : "";
+      if (/tool|file|command/.test(partType)) return "";
+      return readKnownFinalField(part) || collectTextFromContent(part.content);
+    })
+    .filter(Boolean)
+    .join("");
+}
+
+function collectAssistantTextFromEvent(event: JsonObject) {
+  const eventType = typeof event.type === "string" ? event.type.toLowerCase() : "";
+  const role = typeof event.role === "string" ? event.role.toLowerCase() : "";
+  const part = isJsonObject(event.part) ? event.part : null;
+  const message = isJsonObject(event.message) ? event.message : null;
+
+  if (/tool|command|file|patch|step|session|permission|error/.test(eventType)) return "";
+
+  if (role === "assistant") {
+    return readKnownFinalField(event) || collectTextFromParts(event.parts);
+  }
+
+  if (message && typeof message.role === "string" && message.role.toLowerCase() === "assistant") {
+    return (
+      readKnownFinalField(message) ||
+      collectTextFromContent(message.content) ||
+      collectTextFromParts(message.parts)
+    );
+  }
+
+  if (part) {
+    const partType = typeof part.type === "string" ? part.type.toLowerCase() : "";
+    if (/tool|file|command/.test(partType)) return "";
+    const partText = readKnownFinalField(part) || collectTextFromContent(part.content);
+    if (partText.trim() && /assistant|message|text|part|delta|complete|finish|done/i.test(eventType)) {
+      return partText;
+    }
+  }
+
+  if (/assistant|message|text|result|complete|finish|done/.test(eventType)) {
+    return readKnownFinalField(event) || collectTextFromParts(event.parts);
+  }
+
+  return "";
+}
+
 function collectTextFromPayloads(payloads: unknown): string {
   if (!Array.isArray(payloads)) return "";
 
@@ -120,6 +182,9 @@ function readKnownFinalField(value: JsonObject) {
 
   const contentText = collectTextFromContent(value.content);
   if (contentText.trim()) return contentText;
+
+  const partsText = collectTextFromParts(value.parts);
+  if (partsText.trim()) return partsText;
 
   if (isJsonObject(value.message)) {
     const messageText = collectTextFromContent(value.message.content);
@@ -224,6 +289,13 @@ function parseGenericJsonEvents(stdout: string, kind: AgentStreamKind): ParsedAg
     const eventType = typeof event.type === "string" ? event.type : "";
     const subtype = typeof event.subtype === "string" ? event.subtype : "";
     const eventText = readKnownFinalField(event);
+
+    if (kind === "opencode") {
+      const assistantText = collectAssistantTextFromEvent(event);
+      if (assistantText.trim()) final = assistantText;
+      else process.push(stringifyProcessValue(event));
+      return;
+    }
 
     if (eventText.trim() && (eventType === "text" || Array.isArray(event.payloads))) {
       final = eventText;

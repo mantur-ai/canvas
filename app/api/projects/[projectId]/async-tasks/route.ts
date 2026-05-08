@@ -49,6 +49,7 @@ export async function POST(request: Request, context: { params: Promise<{ projec
       duration: readString(body.duration) || undefined,
       category: readString(body.category) || undefined,
       parentId: readString(body.parentId) || undefined,
+      storyboardId: readString(body.storyboardId) || undefined,
       poll: {
         url: readString(body.poll.url),
         method: readString(body.poll.method).toUpperCase() === "POST" ? "POST" : "GET",

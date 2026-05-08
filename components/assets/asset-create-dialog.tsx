@@ -34,6 +34,7 @@ type AssetCreateSource = "global" | "local" | "ai";
 type AssetCreateCategory = "character" | "prop" | "scene" | "reference";
 
 type AssetCreateDialogProps = {
+  defaultName?: string;
   hiddenSources?: AssetCreateSource[];
   images: ProjectImageAsset[];
   libraryImage?: ProjectImageAsset | null;
@@ -82,6 +83,7 @@ function getFileHelp(file: File | null, fallback: string) {
 }
 
 export function AssetCreateDialog({
+  defaultName = "",
   hiddenSources = [],
   images,
   libraryImage,
@@ -102,7 +104,7 @@ export function AssetCreateDialog({
   const [parentCharacterId, setParentCharacterId] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [previewFailed, setPreviewFailed] = useState(false);
-  const [name, setName] = useState(libraryImage?.name ?? "");
+  const [name, setName] = useState(libraryImage?.name ?? defaultName);
   const [prompt, setPrompt] = useState(libraryImage?.prompt ?? "");
   const [saving, setSaving] = useState(false);
   const filePreviewUrl = useMemo(() => (file ? URL.createObjectURL(file) : ""), [file]);
@@ -148,6 +150,11 @@ export function AssetCreateDialog({
     };
   }, [filePreviewUrl]);
 
+  useEffect(() => {
+    if (!open || libraryImage) return;
+    setName(defaultName);
+  }, [defaultName, libraryImage, open]);
+
   const closeDialog = () => {
     onOpenChange(false);
     setMode(isLibraryMode ? "form" : "choose-source");
@@ -191,7 +198,7 @@ export function AssetCreateDialog({
       if (result.project) onProjectUpdated?.(result.project);
       closeDialog();
       setFile(null);
-      setName("");
+      setName(defaultName);
       setPrompt("");
     } catch {
       setSaving(false);

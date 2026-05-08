@@ -56,6 +56,7 @@ export type AsyncTaskRecord = {
   duration?: string;
   category?: string;
   parentId?: string;
+  storyboardId?: string;
   poll: AsyncTaskPollSpec;
   responseSchema: AsyncTaskResponseSchema;
   intervalMs: number;
@@ -78,6 +79,7 @@ export type AsyncTaskEvent = {
   status: AsyncTaskStatus;
   error?: string;
   resultUrl?: string;
+  storyboardId?: string;
 };
 
 const TASKS_FILE_NAME = "async-tasks.json";
@@ -235,6 +237,7 @@ function readTaskRecord(
     duration: readString(value.duration) || undefined,
     category: readString(value.category) || undefined,
     parentId: readString(value.parentId) || undefined,
+    storyboardId: readString(value.storyboardId) || undefined,
     poll,
     responseSchema,
     intervalMs: clampInterval(value.intervalMs),
@@ -461,6 +464,7 @@ async function persistGeneratedMedia(task: AsyncTaskRecord, resultUrl: string) {
       projectId: task.projectId,
       resultUrl,
       source: task.source,
+      storyboardId: task.storyboardId,
       videoId: task.mediaId,
     });
   }
@@ -672,6 +676,7 @@ function emitTaskEvent(task: AsyncTaskRecord) {
     status: task.status,
     error: task.error,
     resultUrl: task.resultUrl,
+    storyboardId: task.storyboardId,
   };
 
   subscribers.forEach((subscriber) => {
@@ -748,10 +753,11 @@ export async function createAsyncTask(input: {
   name?: string;
   source?: string;
   cover?: string;
-  duration?: string;
-  category?: string;
-  parentId?: string;
-  poll: AsyncTaskPollSpec;
+    duration?: string;
+    category?: string;
+    parentId?: string;
+    storyboardId?: string;
+    poll: AsyncTaskPollSpec;
   responseSchema: AsyncTaskResponseSchema;
   intervalMs?: number;
   maxDurationMs?: number;
@@ -790,6 +796,7 @@ export async function createAsyncTask(input: {
       duration: input.duration,
       category: input.category,
       parentId: input.parentId,
+      storyboardId: input.storyboardId,
       poll: input.poll,
       responseSchema: input.responseSchema,
       intervalMs: clampInterval(input.intervalMs),

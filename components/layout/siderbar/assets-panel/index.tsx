@@ -7,7 +7,11 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 
 import { AssetCreateDialog } from "@/components/assets/asset-create-dialog";
-import { ChatWindow, type ChatWindowModelOption } from "@/components/canvas/chat-window";
+import {
+  ChatWindow,
+  type ChatWindowModelOption,
+  type ChatWindowReferenceImage,
+} from "@/components/canvas/chat-window";
 import { MediaPreviewDialog } from "@/components/canvas/media-preview-dialog";
 import { MediaPreviewPopover } from "@/components/canvas/media-preview-popover";
 import { useSilentAgentCommand } from "@/components/canvas/use-silent-agent-command";
@@ -127,6 +131,15 @@ function toMediaItem(asset: ProjectImageAsset, status: string | undefined): Medi
     type: "image",
     url: asset.url,
   };
+}
+
+function getAssetMentionCategoryLabel(t: ReturnType<typeof useTranslations>, categoryKey: string) {
+  if (categoryKey === "characters") return t("assetTabs.character");
+  if (categoryKey === "scenes") return t("assetTabs.scene");
+  if (categoryKey === "props") return t("assetTabs.prop");
+  if (categoryKey === "voices") return t("assetTabs.voice");
+  if (categoryKey === "videos") return t("assetTabs.video");
+  return t("assetTabs.all");
 }
 
 export function AssetsPanel() {
@@ -343,6 +356,25 @@ export function AssetsPanel() {
   const selectedChatCommandStatus = selectedChatAsset
     ? commandStatuses[selectedChatAsset.id]
     : undefined;
+  const selectedChatMentionImages = useMemo<ChatWindowReferenceImage[]>(() => {
+    if (!selectedChatAsset) return [];
+
+    return projectImages
+      .filter((asset) => asset.type === selectedChatAsset.type)
+      .map((asset, index) => {
+        const fallbackLabel = tCanvas("chatWindow.imageFallback", { index: index + 1 });
+        const label = asset.name.trim() || fallbackLabel;
+
+        return {
+          categoryKey: asset.type,
+          categoryLabel: getAssetMentionCategoryLabel(t, asset.type),
+          id: asset.id,
+          label,
+          name: label,
+          url: asset.url,
+        };
+      });
+  }, [projectImages, selectedChatAsset, t, tCanvas]);
   const selectedAssetChildren = useMemo(() => {
     if (!selectedAsset) return [];
 
@@ -835,9 +867,9 @@ export function AssetsPanel() {
                 promptPairSeparator={tCanvas("chatWindow.promptPairSeparator")}
                 modelSelectLabel={tCanvas("chatWindow.modelSelect")}
                 modelOptions={imageModelOptions}
-                mediaMentionImages={[]}
-                preferMediaMentions={false}
-                referenceImages={[]}
+                mediaMentionImages={selectedChatMentionImages}
+                preferMediaMentions
+                referenceImages={selectedChatMentionImages}
                 requiresFirstLastFrame={false}
                 selectedModelId={selectedModelId}
                 sendLabel={tCanvas("chatWindow.send")}

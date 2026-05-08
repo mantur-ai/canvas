@@ -35,6 +35,7 @@ type SilentAgentContext = {
   mediaId?: string;
   mediaName?: string;
   mediaType?: string;
+  storyboardId?: string;
   scope: "asset-grid" | "canvas-grid" | "storyboard-list";
   featureSkill: ChatFeatureSkill;
 };
@@ -51,6 +52,7 @@ type AsyncTaskEventPayload = {
   mediaId?: string;
   mediaType?: "image" | "video";
   status?: string;
+  storyboardId?: string;
 };
 
 type AsyncTaskEventSubscription = {
@@ -255,6 +257,7 @@ function buildInlineGridCommand(params: {
     params.context.mediaId ? `Media ID: ${params.context.mediaId}` : "",
     params.context.mediaName ? `Media Name: ${params.context.mediaName}` : "",
     params.context.mediaType ? `Media Type: ${params.context.mediaType}` : "",
+    params.context.storyboardId ? `Storyboard ID: ${params.context.storyboardId}` : "",
     videoOptions ? `[Video Options]\n${videoOptions}` : "",
     params.recipePack ? `[Project Recipe Pack]\n${params.recipePack}` : "",
     attachmentContext ? `[Attached Files]\n${attachmentContext}` : "",
