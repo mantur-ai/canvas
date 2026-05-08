@@ -139,6 +139,17 @@ async function removeProjectVideoFiles(params: {
   );
 }
 
+async function confirmProjectVideoHasStoryboardLink(params: {
+  projectId: string;
+  videoId: string;
+}) {
+  return updateProjectStoryboard({
+    projectId: params.projectId,
+    update: (storyboard) =>
+      storyboard.videos.includes(params.videoId) ? { ...storyboard } : storyboard,
+  });
+}
+
 export async function getProjectVideos(
   projectId: string,
 ): Promise<{ success: true; videos: ProjectVideoAsset[] } | { success: false; error: string }> {
@@ -359,7 +370,13 @@ export async function storeGeneratedProjectVideo(params: {
         storyboardId: params.storyboardId,
         videoId: params.videoId,
       });
-      if (!storyboardUpdate.success) return storyboardUpdate;
+      if (!storyboardUpdate.success) {
+        const existingStoryboardLink = await confirmProjectVideoHasStoryboardLink({
+          projectId: params.projectId,
+          videoId: params.videoId,
+        });
+        if (!existingStoryboardLink.success) return storyboardUpdate;
+      }
     }
 
     return { success: true, video: nextVideo, videos };

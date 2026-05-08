@@ -73,7 +73,7 @@ async function handleAsyncTaskEvent(
 ) {
   if (!payload.mediaId || !payload.mediaType) return;
 
-  const { setCommandStatus, updateImageAsset, updateVideoAsset } =
+  const { addVideoToStoryboard, setCommandStatus, updateImageAsset, updateVideoAsset } =
     useCanvasStore.getState();
 
   if (payload.status !== "succeeded") {
@@ -84,7 +84,11 @@ async function handleAsyncTaskEvent(
   if (payload.mediaType === "video") {
     const videos = await fetchProjectVideos(projectId).catch(() => []);
     const video = videos.find((item) => item.id === payload.mediaId);
-    if (video) updateVideoAsset(video);
+    if (video && payload.storyboardId) {
+      addVideoToStoryboard(payload.storyboardId, video);
+    } else if (video) {
+      updateVideoAsset(video);
+    }
     setCommandStatus(payload.mediaId, video?.url.trim() ? "success" : "error");
     return;
   }

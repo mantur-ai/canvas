@@ -13,6 +13,13 @@
       "instructions": "hermes",
       "icon": "https://hermes-agent.nousresearch.com/icon.png?icon.17972d59.png",
       "description": ""
+    },
+    {
+      "id": "fac60ef3-65be-471d-91a4-acaa617016ac",
+      "name": "claudecode",
+      "instructions": "claude",
+      "icon": "https://claude.ai/favicon.ico",
+      "description": ""
     }
   ]
 }
