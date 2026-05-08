@@ -539,7 +539,9 @@ export async function addProjectImageToStoryboard(params: {
     projectId: params.projectId,
     update: (storyboard) => {
       if (storyboard.id !== params.storyboardId) return storyboard;
-      if (storyboard.images.includes(params.imageId)) return storyboard;
+      if (storyboard.images.includes(params.imageId)) {
+        return { ...storyboard };
+      }
 
       return {
         ...storyboard,

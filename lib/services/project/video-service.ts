@@ -246,7 +246,9 @@ export async function addProjectVideoToStoryboard(params: {
     projectId: params.projectId,
     update: (storyboard) => {
       if (storyboard.id !== params.storyboardId) return storyboard;
-      if (storyboard.videos.includes(params.videoId)) return storyboard;
+      if (storyboard.videos.includes(params.videoId)) {
+        return { ...storyboard };
+      }
 
       return {
         ...storyboard,
