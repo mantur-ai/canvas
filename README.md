@@ -77,7 +77,7 @@ macOS or Linux:
 bash scripts/quick-start.sh
 ```
 
-The quick-start script checks the Node.js version, installs dependencies, prepares local example files, and starts the development server.
+The quick-start script checks the Node.js version, installs dependencies, prepares local example files, builds the production app, and starts it with `npm run start`.
 
 ## Start In Development
 
@@ -146,7 +146,7 @@ These paths may contain private user data, API configuration, prompts, generated
 ## Scripts
 
 - `npm run dev`: start the development server
-- `npm run quick-start`: check the environment, install dependencies, and start the development server when Node.js is already installed
+- `npm run quick-start`: check the environment, install dependencies, build the production app, and start the production server when Node.js is already installed
 - `npm run build`: build the production app
 - `npm run start`: start the production server
 - `npm run pm2:start`: start the production server with PM2

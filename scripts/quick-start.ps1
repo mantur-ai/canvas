@@ -179,5 +179,8 @@ Ensure-Opencode
 Install-Dependencies
 Initialize-ExampleFiles
 
+Write-ManturLog "Building Mantur Canvas for production..."
+npm run build
+
 Write-ManturLog "Starting Mantur Canvas at http://localhost:3000"
-npm run dev
+npm run start
