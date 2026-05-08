@@ -77,7 +77,7 @@ macOS 或 Linux：
 bash scripts/quick-start.sh
 ```
 
-一键启动脚本会检查 Node.js 版本、安装依赖、补齐本地示例文件，并启动开发服务。
+一键启动脚本会检查 Node.js 版本、安装依赖、补齐本地示例文件，构建生产版本，并通过 `npm run start` 启动服务。
 
 ## 开发模式启动
 
@@ -146,7 +146,7 @@ pm2 save
 ## 常用脚本
 
 - `npm run dev`：启动开发服务器
-- `npm run quick-start`：在已安装 Node.js 时检查环境、安装依赖并启动开发服务器
+- `npm run quick-start`：在已安装 Node.js 时检查环境、安装依赖、构建生产版本并启动生产服务器
 - `npm run build`：构建生产版本
 - `npm run start`：启动生产服务器
 - `npm run pm2:start`：使用 PM2 启动生产服务器

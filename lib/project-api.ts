@@ -581,6 +581,7 @@ export async function storeGeneratedProjectVideo(
     resultUrl: string;
     source?: string;
     status?: string;
+    storyboardId?: string;
     videoId: string;
   },
 ): Promise<{ video: ProjectVideoAsset; videos: ProjectVideoAsset[] }> {

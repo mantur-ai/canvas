@@ -172,8 +172,11 @@ main() {
   install_dependencies
   initialize_example_files
 
+  log "Building Mantur Canvas for production..."
+  npm run build
+
   log "Starting Mantur Canvas at http://localhost:3000"
-  npm run dev
+  npm run start
 }
 
 main "$@"

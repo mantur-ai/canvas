@@ -241,11 +241,44 @@ function CanvasWorkspaceInner() {
         return tSidebar("assetTabs.character");
       if (categoryKey === "prop" || categoryKey === "props") return tSidebar("assetTabs.prop");
       if (categoryKey === "scene" || categoryKey === "scenes") return tSidebar("assetTabs.scene");
+      if (categoryKey === "voice" || categoryKey === "voices") return tSidebar("assetTabs.voice");
+      if (categoryKey === "video" || categoryKey === "videos") return tSidebar("assetTabs.video");
       if (categoryKey === "reference") return t("chatWindow.assetCategories.reference");
       return t("chatWindow.assetCategories.unknown");
     },
     [t, tSidebar],
   );
+  const selectedMediaIsProjectAsset = selectedMediaGridItem
+    ? isProjectAssetImage(currentProject, selectedMediaGridItem.item.id)
+    : false;
+  const projectAssetMentionImages = useMemo<ChatWindowReferenceImage[]>(() => {
+    if (!selectedMediaGridItem || !selectedMediaIsProjectAsset) return [];
+
+    const imageById = new Map<string, ChatWindowReferenceImage>();
+    Object.values(currentCanvasDataByEpisode).forEach((canvasData) => {
+      canvasData.data.images.forEach((image) => {
+        if (imageById.has(image.id) || image.type !== selectedMediaGridItem.item.assetType) return;
+
+        const label = image.name.trim() || imageFallbackLabel(imageById.size + 1);
+        imageById.set(image.id, {
+          categoryKey: image.type,
+          categoryLabel: getAssetCategoryLabel(image.type),
+          id: image.id,
+          label,
+          name: label,
+          url: image.url,
+        });
+      });
+    });
+
+    return [...imageById.values()];
+  }, [
+    currentCanvasDataByEpisode,
+    getAssetCategoryLabel,
+    imageFallbackLabel,
+    selectedMediaGridItem,
+    selectedMediaIsProjectAsset,
+  ]);
   const referenceImages = useMemo<ChatWindowReferenceImage[]>(() => {
     if (!selectedMediaGridItem) return [];
 
@@ -292,17 +325,21 @@ function CanvasWorkspaceInner() {
         .find((storyboard) => storyboard.id === selectedMediaGridItem.sceneId) ?? null
     );
   }, [currentCanvasDataByEpisode, selectedMediaGridItem]);
-  const selectedMediaIsProjectAsset = selectedMediaGridItem
-    ? isProjectAssetImage(currentProject, selectedMediaGridItem.item.id)
-    : false;
   const selectedMediaUsesStoryboardImagePrompt =
     Boolean(selectedMediaGridItem) &&
     !selectedMediaIsProjectAsset &&
     isReferenceImageType(selectedMediaGridItem?.item.assetType ?? "");
   const usesStoryboardAssetMentions =
     selectedMediaGridItem?.item.type === "video" || selectedMediaUsesStoryboardImagePrompt;
-  const mediaMentionImages = usesStoryboardAssetMentions
-    ? referenceImages
+  const usesProjectAssetMentions =
+    selectedMediaGridItem?.item.type === "image" && selectedMediaIsProjectAsset;
+  const mediaMentionImages = usesProjectAssetMentions
+    ? projectAssetMentionImages
+    : usesStoryboardAssetMentions
+      ? referenceImages
+      : EMPTY_CHAT_REFERENCE_IMAGES;
+  const initialMentionTags = usesStoryboardAssetMentions
+    ? mediaMentionImages
     : EMPTY_CHAT_REFERENCE_IMAGES;
   const selectedChatInitialPrompt = selectedMediaGridItem
     ? selectedMediaGridItem.item.type === "video" || selectedMediaUsesStoryboardImagePrompt
@@ -606,7 +643,7 @@ function CanvasWorkspaceInner() {
             commandStatus={commandStatus}
             initialPrompt={selectedChatInitialPrompt || ""}
             initialPromptKey={selectedChatInitialPromptKey}
-            initialMentionTags={mediaMentionImages}
+            initialMentionTags={initialMentionTags}
             projectId={currentProject?.id ?? ""}
             emptyModelLabel={t("chatWindow.emptyModel")}
             placeholder={t("chatWindow.placeholder")}
@@ -621,7 +658,7 @@ function CanvasWorkspaceInner() {
             modelSelectLabel={t("chatWindow.modelSelect")}
             modelOptions={modelOptions}
             mediaMentionImages={mediaMentionImages}
-            preferMediaMentions={usesStoryboardAssetMentions}
+            preferMediaMentions={usesStoryboardAssetMentions || usesProjectAssetMentions}
             referenceImages={referenceImages}
             requiresFirstLastFrame={requiresFirstLastFrame}
             selectedModelId={selectedModelId}
@@ -678,8 +715,9 @@ function CanvasWorkspaceInner() {
                           ? "asset-panel-generate"
                           : "storyboard-image-generate",
                     mediaId: targetSelection.item.id,
-                    mediaName: targetSelection.item.name,
                     mediaType: targetSelection.item.type,
+                    storyboardId:
+                      targetSelection.item.type === "video" ? targetSelection.sceneId : undefined,
                     scope: "canvas-grid",
                   });
                   agentRunCompleted = true;

@@ -83,6 +83,42 @@ async function isReachablePublicUrl(url: string) {
   }
 }
 
+function getImageExtensionFromBuffer(buffer: Buffer) {
+  if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+    return "png";
+  }
+  if (buffer.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))) {
+    return "jpg";
+  }
+  if (
+    buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+    buffer.subarray(8, 12).toString("ascii") === "WEBP"
+  ) {
+    return "webp";
+  }
+  if (buffer.subarray(0, 3).toString("ascii") === "GIF") {
+    return "gif";
+  }
+  return "";
+}
+
+function readGeneratedImageBase64(value: string) {
+  const trimmed = value.trim();
+  const dataUrlMatch = /^data:(image\/[a-z0-9.+-]+);base64,([\s\S]+)$/i.exec(trimmed);
+  const base64Text = (dataUrlMatch ? (dataUrlMatch[2] ?? "") : trimmed).replace(/\s/g, "");
+  if (!base64Text || !/^[a-z0-9+/]+={0,2}$/i.test(base64Text)) return null;
+
+  const buffer = Buffer.from(base64Text, "base64");
+  if (buffer.length === 0 || buffer.length > 30 * 1024 * 1024) return null;
+
+  const extension =
+    (dataUrlMatch?.[1] ? getImageExtension(dataUrlMatch[1], `generated.${dataUrlMatch[1].split("/")[1] ?? "png"}`) : "") ||
+    getImageExtensionFromBuffer(buffer);
+  if (!extension) return null;
+
+  return { buffer, extension };
+}
+
 export async function replaceProjectImages(params: {
   images: unknown;
   projectId: string;
@@ -206,12 +242,13 @@ export async function createProjectImage(params: {
     }
 
     const currentImages = await normalizeProjectImageAssets(params.projectId);
+    const imageType = normalizeProjectImageType(params.image.category);
     const image: ProjectImageAsset = {
       id,
       name: params.image.name,
       publicUrl: "",
       publicUrlUpdatedAt: "",
-      type: params.image.category,
+      type: imageType,
       source: params.image.source,
       prompt: params.image.prompt,
       url,
@@ -222,7 +259,7 @@ export async function createProjectImage(params: {
     const project = await readProjectDetail(params.projectId).catch(() => null);
     const nextProject = project
       ? addImageToProjectAssets(project, {
-        category: params.image.category,
+        category: imageType,
         imageId: id,
         parentId: params.image.parentId,
       })
@@ -344,7 +381,8 @@ export async function storeGeneratedProjectImage(params: {
   name?: string;
   parentId?: string;
   projectId: string;
-  resultUrl: string;
+  resultBase64?: string;
+  resultUrl?: string;
   source?: string;
 }): Promise<{ success: true; image: ProjectImageAsset; images: ProjectImageAsset[] } | { success: false; error: string }> {
   try {
@@ -355,12 +393,19 @@ export async function storeGeneratedProjectImage(params: {
     assertSafeProjectPath(imagesJsonPath);
 
     await mkdir(imagesDir, { recursive: true });
-    const fallbackExtension = getImageExtensionFromUrl(params.resultUrl) || "png";
-    const remoteFile = await downloadRemoteGeneratedFile({
-      fallbackExtension,
-      sourceUrl: params.resultUrl,
-      type: "image",
-    });
+    const base64Input =
+      params.resultBase64 ?? (params.resultUrl?.trim().startsWith("data:") ? params.resultUrl : "");
+    const base64File = base64Input ? readGeneratedImageBase64(base64Input) : null;
+    const remoteFile = base64File ?? (params.resultUrl
+      ? await downloadRemoteGeneratedFile({
+        fallbackExtension: getImageExtensionFromUrl(params.resultUrl) || "png",
+        sourceUrl: params.resultUrl,
+        type: "image",
+      })
+      : null);
+    if (!remoteFile) {
+      return { success: false, error: "GENERATED_IMAGE_DATA_NOT_FOUND" };
+    }
     const fileName = `${params.imageId}.${remoteFile.extension}`;
     if (!PROJECT_IMAGE_FILE_PATTERN.test(fileName)) {
       return { success: false, error: "INVALID_IMAGE_FILE_NAME" };
@@ -373,6 +418,9 @@ export async function storeGeneratedProjectImage(params: {
     const currentImages = await normalizeProjectImageAssets(params.projectId);
     const currentImage = currentImages.find((image) => image.id === params.imageId);
     const sourcePrompt = currentImage?.prompt ?? "";
+    const imageType = params.category
+      ? normalizeProjectImageType(params.category)
+      : (currentImage?.type ?? "reference");
     const nextImage: ProjectImageAsset = {
       id: params.imageId,
       name: params.name ?? currentImage?.name ?? "",
@@ -380,7 +428,7 @@ export async function storeGeneratedProjectImage(params: {
       publicUrlUpdatedAt: currentImage?.publicUrlUpdatedAt ?? "",
       prompt: sourcePrompt,
       source: params.source ?? currentImage?.source ?? "generate",
-      type: params.category ?? currentImage?.type ?? "reference",
+      type: imageType,
       url: `/api/projects/${encodeURIComponent(params.projectId)}/images/${encodeURIComponent(fileName)}`,
     };
     const images = currentImage
@@ -388,11 +436,11 @@ export async function storeGeneratedProjectImage(params: {
       : [nextImage, ...currentImages];
     await writeFile(imagesJsonPath, JSON.stringify(images, null, 2), "utf8");
 
-    if (params.category && params.category !== "reference") {
+    if (imageType !== "reference") {
       const project = await readProjectDetail(params.projectId).catch(() => null);
       const nextProject = project
         ? addImageToProjectAssets(project, {
-          category: params.category,
+          category: imageType,
           imageId: params.imageId,
           parentId: params.parentId,
         })

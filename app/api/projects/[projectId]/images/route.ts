@@ -135,6 +135,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ proje
       parentId?: unknown;
       prompt?: unknown;
       publicUrl?: unknown;
+      resultBase64?: unknown;
       resultUrl?: unknown;
       source?: unknown;
       storyboardId?: unknown;
@@ -183,7 +184,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ proje
     if (
       body.action === "store-generated" &&
       typeof body.imageId === "string" &&
-      typeof body.resultUrl === "string"
+      (typeof body.resultUrl === "string" || typeof body.resultBase64 === "string")
     ) {
       const result = await storeGeneratedProjectImage({
         category: typeof body.category === "string" ? body.category : undefined,
@@ -191,7 +192,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ proje
         name: typeof body.name === "string" ? body.name : undefined,
         parentId: typeof body.parentId === "string" && body.parentId ? body.parentId : undefined,
         projectId,
-        resultUrl: body.resultUrl,
+        resultBase64: typeof body.resultBase64 === "string" ? body.resultBase64 : undefined,
+        resultUrl: typeof body.resultUrl === "string" ? body.resultUrl : undefined,
         source: typeof body.source === "string" ? body.source : undefined,
       });
       if (!result.success) return toErrorResponse();

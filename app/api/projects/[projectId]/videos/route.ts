@@ -104,6 +104,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ proje
         resultUrl: body.resultUrl,
         source: typeof body.source === "string" ? body.source : undefined,
         status: typeof body.status === "string" ? body.status : undefined,
+        storyboardId: typeof body.storyboardId === "string" ? body.storyboardId : undefined,
         videoId: body.videoId,
       });
       if (!result.success) return toErrorResponse();

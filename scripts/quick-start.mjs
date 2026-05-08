@@ -198,8 +198,11 @@ function main() {
   installDependencies();
   initializeExampleFiles();
 
+  log("Building Mantur Canvas for production...");
+  run("npm", ["run", "build"]);
+
   log("Starting Mantur Canvas at http://localhost:3000");
-  run("npm", ["run", "dev"]);
+  run("npm", ["run", "start"]);
 }
 
 main();
