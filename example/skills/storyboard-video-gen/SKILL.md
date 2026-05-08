@@ -12,6 +12,7 @@ Use this skill when the command asks to generate or regenerate a storyboard vide
 Read only:
 
 - `projects/currentProject.json`
+- `projects/{projectId}/project.json`
 - `projects/{projectId}/config.json`
 - the single `[Skill Temporary Context]` directory supplied by the command, when present
 
@@ -44,17 +45,20 @@ In both cases the backend downloads the video, writes files, updates metadata, p
 
 ## Model Call
 
-1. Read `config.json`.
-2. Use the selected video model from `config.videoModel`.
-3. Use `videoModel.example` as the curl/request template.
-4. Replace only:
+1. Read `project.json` and `config.json`.
+2. Use `project.json.aspectRatio` and `project.json.resolution` as the authoritative generation format settings.
+3. Use the selected video model from `config.videoModel`.
+4. Use `videoModel.example` as the curl/request template.
+5. Replace only:
    - prompt/content text
    - reference media fields
-   - duration, shot type, aspect ratio, or resolution when supplied
+   - duration and shot type from UI options when supplied
+   - aspect ratio and resolution from `project.json`
    - auth placeholders with `videoModel.apiKey`
-5. Call the video generation endpoint once.
-6. **If the provider returns a final video URL on the initial generation call**, skip polling and go straight to step 8 (call the existing `store-generated` API).
-7. **If the provider returns a `task_id` (or any async handle)**, do NOT poll the provider yourself. Hand the polling spec to the backend `/async-tasks` endpoint and exit immediately. The backend API owns all polling and final persistence.
+6. Override existing provider fields such as `ratio`, `aspect_ratio`, `aspectRatio`, `resolution`, `size`, or `video_size` when present. If the provider template has no supported field, add the format to the final prompt as plain text: `Output aspect ratio: <aspectRatio>. Output resolution: <resolution>.`
+7. Call the video generation endpoint once.
+8. **If the provider returns a final video URL on the initial generation call**, skip polling and go straight to the direct `store-generated` API call.
+9. **If the provider returns a `task_id` (or any async handle)**, do NOT poll the provider yourself. Hand the polling spec to the backend `/async-tasks` endpoint and exit immediately. The backend API owns all polling and final persistence.
 
    Issue this single registration call (still using the same bash key-read pattern from **Secret Handling** so the auth header is materialized inside the shell call and not pasted by the model):
 
