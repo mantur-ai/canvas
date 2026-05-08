@@ -1,5 +1,5 @@
 // Video asset actions: manage uploaded files, storyboard links, and local ffmpeg merges.
-import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { v4 as createUuid } from "uuid";
 import type { ProjectStoryboard, ProjectVideoAsset } from "@/lib/project-types";
@@ -7,6 +7,7 @@ import type { CreateProjectVideoInput, ProjectTempImageInput } from "./shared";
 import {
   VIDEO_FILE_PATTERN,
   FFMPEG_COMMAND,
+  FFPROBE_COMMAND,
   assertSafeProjectPath,
   createProjectVideoCover,
   ensureProjectVideoCovers,
@@ -25,6 +26,118 @@ import {
   updateProjectStoryboard,
   updateProjectStoryboards,
 } from "./shared";
+
+async function hasAudioStream(videoFilePath: string): Promise<boolean> {
+  try {
+    const { stdout } = await execFileAsync(FFPROBE_COMMAND, [
+      "-v",
+      "error",
+      "-select_streams",
+      "a:0",
+      "-show_entries",
+      "stream=index",
+      "-of",
+      "csv=p=0",
+      videoFilePath,
+    ]);
+
+    return stdout.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
+
+async function ensureVideoAudioTrack(params: {
+  inputPath: string;
+  outputPath: string;
+}): Promise<{ path: string; generated: boolean }> {
+  if (await hasAudioStream(params.inputPath)) {
+    return { path: params.inputPath, generated: false };
+  }
+
+  await execFileAsync(FFMPEG_COMMAND, [
+    "-y",
+    "-i",
+    params.inputPath,
+    "-f",
+    "lavfi",
+    "-i",
+    "anullsrc=channel_layout=stereo:sample_rate=48000",
+    "-map",
+    "0:v:0",
+    "-map",
+    "1:a:0",
+    "-c:v",
+    "copy",
+    "-c:a",
+    "aac",
+    "-shortest",
+    params.outputPath,
+  ]);
+
+  return { path: params.outputPath, generated: true };
+}
+
+async function transcodeProjectVideoForBrowser(params: {
+  inputPath: string;
+  outputPath: string;
+}): Promise<void> {
+  const hasAudio = await hasAudioStream(params.inputPath);
+  const audioInputArgs = hasAudio
+    ? []
+    : ["-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000"];
+  const audioMapArgs = hasAudio ? ["-map", "0:a:0"] : ["-map", "1:a:0", "-shortest"];
+
+  await execFileAsync(FFMPEG_COMMAND, [
+    "-y",
+    "-i",
+    params.inputPath,
+    ...audioInputArgs,
+    "-map",
+    "0:v:0",
+    ...audioMapArgs,
+    "-c:v",
+    "libx264",
+    "-preset",
+    "veryfast",
+    "-pix_fmt",
+    "yuv420p",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "192k",
+    "-movflags",
+    "+faststart",
+    params.outputPath,
+  ]);
+}
+
+async function removeProjectVideoFiles(params: {
+  keepFileName?: string;
+  projectId: string;
+  videoId: string;
+  videoUrl: string;
+}): Promise<void> {
+  const videosDir = getProjectVideosDir(params.projectId);
+  const fileNames = new Set<string>();
+  const currentFileName = getProjectVideoFileNameFromUrl(params.projectId, params.videoUrl);
+  if (currentFileName) fileNames.add(currentFileName);
+
+  const videoFiles = await readdir(videosDir).catch((): string[] => []);
+  videoFiles
+    .filter(
+      (fileName) => fileName.startsWith(`${params.videoId}.`) && VIDEO_FILE_PATTERN.test(fileName),
+    )
+    .forEach((fileName) => fileNames.add(fileName));
+
+  await Promise.all(
+    [...fileNames].filter((fileName) => fileName !== params.keepFileName).map(async (fileName) => {
+      const filePath = path.resolve(videosDir, fileName);
+      assertSafeProjectPath(filePath);
+      await rm(filePath, { force: true });
+    }),
+  );
+}
 
 export async function getProjectVideos(
   projectId: string,
@@ -105,8 +218,10 @@ export async function updateProjectVideoFile(params: {
 > {
   try {
     const videosDir = path.resolve(getProjectDir(params.projectId), "videos");
+    const tempDir = getProjectTempDir(params.projectId);
     const videosJsonPath = path.resolve(videosDir, "videos.json");
     assertSafeProjectPath(videosDir);
+    assertSafeProjectPath(tempDir);
     assertSafeProjectPath(videosJsonPath);
 
     await mkdir(videosDir, { recursive: true });
@@ -115,11 +230,33 @@ export async function updateProjectVideoFile(params: {
     const currentVideo = currentVideos.find((video) => video.id === params.videoId);
     if (!currentVideo) return { success: false, error: "VIDEO_NOT_FOUND" };
 
-    const extension = getVideoExtension(params.file.contentType, params.file.name);
-    const fileName = `${params.videoId}.${extension}`;
+    const sourceExtension = getVideoExtension(params.file.contentType, params.file.name);
+    const uploadSourcePath = path.resolve(tempDir, `${params.videoId}-upload.${sourceExtension}`);
+    const fileName = `${params.videoId}.mp4`;
     const filePath = path.resolve(videosDir, fileName);
+    assertSafeProjectPath(uploadSourcePath);
     assertSafeProjectPath(filePath);
-    await writeFile(filePath, params.file.buffer);
+    await mkdir(tempDir, { recursive: true });
+    await writeFile(uploadSourcePath, params.file.buffer);
+
+    try {
+      await transcodeProjectVideoForBrowser({
+        inputPath: uploadSourcePath,
+        outputPath: filePath,
+      });
+    } finally {
+      await rm(uploadSourcePath, { force: true }).catch(() => {
+        // Uploaded source copy is only needed while transcoding.
+      });
+    }
+    if (currentVideo.url) {
+      await removeProjectVideoFiles({
+        keepFileName: fileName,
+        projectId: params.projectId,
+        videoId: params.videoId,
+        videoUrl: currentVideo.url,
+      });
+    }
     const cover = await createProjectVideoCover({
       projectId: params.projectId,
       videoFilePath: filePath,
@@ -315,9 +452,17 @@ export async function deleteProjectVideo(params: {
 
     const content = await readFile(videosJsonPath, "utf8");
     const videos = readProjectVideoAssets(JSON.parse(content));
+    const currentVideo = videos.find((video) => video.id === params.videoId);
     const nextVideos = videos.filter((video) => video.id !== params.videoId);
 
     await writeFile(videosJsonPath, JSON.stringify(nextVideos, null, 2), "utf8");
+    if (currentVideo?.url) {
+      await removeProjectVideoFiles({
+        projectId: params.projectId,
+        videoId: params.videoId,
+        videoUrl: currentVideo.url,
+      });
+    }
     const storyboardUpdate = await updateProjectStoryboards({
       projectId: params.projectId,
       update: (storyboard) => {
@@ -397,11 +542,24 @@ export async function mergeProjectVideos(params: {
     const outputPath = path.resolve(tempDir, `${mergeId}.mp4`);
     assertSafeProjectPath(listPath);
     assertSafeProjectPath(outputPath);
+    const generatedAudioPaths: string[] = [];
+    const mergeInputPaths: string[] = [];
+
+    for (const [index, inputPath] of inputPaths.entries()) {
+      const audioFixedPath = path.resolve(tempDir, `${mergeId}-audio-${index}.mp4`);
+      assertSafeProjectPath(audioFixedPath);
+      const mergeInput = await ensureVideoAudioTrack({
+        inputPath,
+        outputPath: audioFixedPath,
+      });
+      mergeInputPaths.push(mergeInput.path);
+      if (mergeInput.generated) generatedAudioPaths.push(mergeInput.path);
+    }
 
     // ffmpeg's concat demuxer needs a local manifest; only validated project video files are listed.
     await writeFile(
       listPath,
-      inputPaths.map((filePath) => `file ${quoteFfmpegConcatPath(filePath)}`).join("\n"),
+      mergeInputPaths.map((filePath) => `file ${quoteFfmpegConcatPath(filePath)}`).join("\n"),
       "utf8",
     );
 
@@ -447,6 +605,13 @@ export async function mergeProjectVideos(params: {
       await rm(outputPath, { force: true }).catch(() => {
         // The merged file has already been streamed to the client; cleanup is best-effort.
       });
+      await Promise.all(
+        generatedAudioPaths.map((filePath) =>
+          rm(filePath, { force: true }).catch(() => {
+            // Generated silent-audio inputs are temporary merge artifacts.
+          }),
+        ),
+      );
     }
   } catch (err) {
     if (err instanceof Error) {
