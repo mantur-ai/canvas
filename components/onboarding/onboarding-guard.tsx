@@ -37,6 +37,8 @@ const EMPTY_STATUS: SetupStatus = {
   project: false,
 };
 
+const DELAYED_REFRESH_MS = 3000;
+
 const STEPS: Array<{
   icon: typeof Bot;
   key: OnboardingStepKey;
@@ -100,6 +102,7 @@ export function OnboardingGuard() {
   const t = useTranslations("Onboarding");
   // 只接受最新一次检查结果，避免慢请求把已完成状态又覆盖成旧状态。
   const latestRefreshIdRef = useRef(0);
+  const shouldBlockRef = useRef(false);
   const statusRef = useRef<SetupStatus | null>(null);
   const [status, setStatus] = useState<SetupStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -111,6 +114,10 @@ export function OnboardingGuard() {
     [status],
   );
   const shouldBlock = hasInitiallyLoaded && (hasLoadError || incompleteSteps.length > 0);
+
+  useEffect(() => {
+    shouldBlockRef.current = shouldBlock;
+  }, [shouldBlock]);
 
   const refreshStatus = useCallback(async (options: { showLoading?: boolean } = {}) => {
     const showLoading = options.showLoading ?? false;
@@ -159,19 +166,26 @@ export function OnboardingGuard() {
     }, 0);
 
     const handleFocus = () => {
-      if (!shouldBlock) return;
-      void refreshStatus();
-    };
-    const handleOnboardingRefresh = () => {
+      if (!shouldBlockRef.current) return;
       void refreshStatus();
     };
 
     window.addEventListener("focus", handleFocus);
-    window.addEventListener("mantur:onboarding-refresh", handleOnboardingRefresh);
     return () => {
       window.clearTimeout(initialCheckId);
       window.removeEventListener("focus", handleFocus);
-      window.removeEventListener("mantur:onboarding-refresh", handleOnboardingRefresh);
+    };
+  }, [refreshStatus]);
+
+  useEffect(() => {
+    if (!shouldBlock) return;
+
+    const delayedRefreshId = window.setTimeout(() => {
+      void refreshStatus();
+    }, DELAYED_REFRESH_MS);
+
+    return () => {
+      window.clearTimeout(delayedRefreshId);
     };
   }, [refreshStatus, shouldBlock]);
 
