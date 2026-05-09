@@ -233,8 +233,8 @@ function buildInlineGridCommand(params: {
   );
   const videoOptions = params.payload.videoOptions
     ? Object.entries(params.payload.videoOptions)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join("\n")
+      .map(([key, value]) => `${key}: ${value}`)
+      .join("\n")
     : "";
 
   return [
@@ -384,58 +384,70 @@ export function useSilentAgentCommand() {
       const executionKey = getExecutionKey(context);
       if (runningCommandsRef.current.has(executionKey)) return;
 
-      const skillContext = needsSkillContext(payload, context.featureSkill)
-        ? await createProjectSkillContext(currentProject.id, {
-            attachments: payload.attachments,
-            text: payload.text,
-          }).catch(() => null)
-        : null;
-      const commandText = buildInlineGridCommand({
-        context,
-        locale,
-        payload,
-        projectId: currentProject.id,
-        recipePack: currentProject.description.trim(),
-        skillRoute: getWorkflowSkillRoute(context.featureSkill, workflowSkills),
-        skillContext: skillContext
-          ? {
-              contextDir: skillContext.contextDir,
-              files: skillContext.files,
-              manifestPath: skillContext.manifestPath,
-            }
-          : undefined,
-      });
-      // Non-global chats must run as fresh commands so they never inherit the global chat session.
-      const resolvedCommand = resolveGlobalAgentCommand(selectedAgent, commandText, {
-        ephemeral: true,
-        isFirstMessage: true,
-      });
-
-      logAgentStreamSend({
-        argCount: resolvedCommand.args.length,
-        context,
-        executable: resolvedCommand.executable,
-        isFirstContextMessage: true,
-        projectId: currentProject.id,
-      });
       const sidebarLoadingKey = getSidebarLoadingKey(context);
       const abortController = new AbortController();
       const executionId = createUuid();
       runningCommandsRef.current.set(executionKey, {
         abortController,
-        contextDir: skillContext?.contextDir,
         executionId,
         mediaId: context.mediaId,
         projectId: currentProject.id,
       });
       setRunningCount(runningCommandsRef.current.size);
       startSidebarLoading(sidebarLoadingKey);
+      if (context.mediaId) {
+        setCommandStatus(context.mediaId, "loading");
+      }
 
       const runCommand = async () => {
+        let skillContext: Awaited<ReturnType<typeof createProjectSkillContext>> | null = null;
+
         try {
-          if (context.mediaId) {
-            setCommandStatus(context.mediaId, "loading");
+          skillContext = needsSkillContext(payload, context.featureSkill)
+            ? await createProjectSkillContext(currentProject.id, {
+              attachments: payload.attachments,
+              text: payload.text,
+            }).catch(() => null)
+            : null;
+
+          if (abortController.signal.aborted) return;
+
+          const runningCommand = runningCommandsRef.current.get(executionKey);
+          if (runningCommand?.executionId === executionId && skillContext) {
+            runningCommandsRef.current.set(executionKey, {
+              ...runningCommand,
+              contextDir: skillContext.contextDir,
+            });
           }
+
+          const commandText = buildInlineGridCommand({
+            context,
+            locale,
+            payload,
+            projectId: currentProject.id,
+            recipePack: currentProject.description.trim(),
+            skillRoute: getWorkflowSkillRoute(context.featureSkill, workflowSkills),
+            skillContext: skillContext
+              ? {
+                contextDir: skillContext.contextDir,
+                files: skillContext.files,
+                manifestPath: skillContext.manifestPath,
+              }
+              : undefined,
+          });
+          // Non-global chats must run as fresh commands so they never inherit the global chat session.
+          const resolvedCommand = resolveGlobalAgentCommand(selectedAgent, commandText, {
+            ephemeral: true,
+            isFirstMessage: true,
+          });
+
+          logAgentStreamSend({
+            argCount: resolvedCommand.args.length,
+            context,
+            executable: resolvedCommand.executable,
+            isFirstContextMessage: true,
+            projectId: currentProject.id,
+          });
 
           const response = await fetch("/api/agents/execute", {
             method: "POST",

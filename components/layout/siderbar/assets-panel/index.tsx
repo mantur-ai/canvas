@@ -152,6 +152,7 @@ export function AssetsPanel() {
   const currentProjectRef = useRef<ProjectDetail | null>(currentProject);
   const assetTileRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const setCurrentProject = useCanvasStore((state) => state.setCurrentProject);
+  const setCommandStatus = useCanvasStore((state) => state.setCommandStatus);
   const syncProjectImages = useCanvasStore((state) => state.syncProjectImages);
   const commandStatuses = useCanvasStore((state) => state.commandStatuses);
   const assetLoadingAction = useLayoutStore((state) => state.assetLoadingAction);
@@ -897,6 +898,7 @@ export function AssetsPanel() {
                     if (!currentProject || !selectedImageModel) return;
 
                     try {
+                      setCommandStatus(selectedChatAsset.id, "loading");
                       await saveProjectSelectedModel(currentProject.id, {
                         apiKey: selectedImageModel.apiKey,
                         example: selectedImageModel.example,
@@ -922,6 +924,7 @@ export function AssetsPanel() {
                         },
                       );
                     } catch {
+                      setCommandStatus(selectedChatAsset.id, "error");
                       // The agent run depends on the project model config being current.
                     }
                   })();
