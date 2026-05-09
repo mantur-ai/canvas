@@ -1,6 +1,8 @@
 $ErrorActionPreference = "Stop"
 
-$RequiredNodeMajor = 20
+$RequiredNodeMajor = 24
+$Pm2AppName = "mantur-canvas"
+$AppUrl = "http://localhost:3000"
 $ProjectDir = Resolve-Path (Join-Path $PSScriptRoot "..")
 
 function Write-ManturLog {
@@ -30,14 +32,135 @@ function Get-NodeMajorVersion {
   }
 }
 
+function Get-NodeInstallerArch {
+  $Architecture = $env:PROCESSOR_ARCHITECTURE
+
+  if ($Architecture -eq "ARM64") {
+    return "arm64"
+  }
+
+  if ($Architecture -eq "x86") {
+    return "x86"
+  }
+
+  return "x64"
+}
+
+function Invoke-DownloadFile {
+  param(
+    [string]$Url,
+    [string]$OutputPath
+  )
+
+  try {
+    Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $OutputPath
+    return $true
+  } catch {
+    Write-ManturLog "Download failed from $Url"
+    return $false
+  }
+}
+
+function Get-NodeMsiAsset {
+  param(
+    [string]$MirrorUrl,
+    [string]$Arch
+  )
+
+  $NormalizedMirrorUrl = $MirrorUrl.TrimEnd("/") + "/"
+  $Index = Invoke-WebRequest -UseBasicParsing -Uri $NormalizedMirrorUrl
+  $Content = $Index.Content
+  $FilePattern = "node-v([0-9]+\.[0-9]+\.[0-9]+)-$Arch\.msi"
+
+  try {
+    $Items = $Content | ConvertFrom-Json
+    $Candidates = @($Items | Where-Object { $_.name -match "^$FilePattern$" } | Sort-Object { [version]($_.name -replace "^node-v", "" -replace "-$Arch\.msi$", "") } -Descending)
+
+    if ($Candidates.Count -gt 0) {
+      return [pscustomobject]@{
+        Name = $Candidates[0].name
+        Url = $Candidates[0].url
+      }
+    }
+  } catch {
+  }
+
+  $Matches = [regex]::Matches($Content, $FilePattern)
+  if ($Matches.Count -eq 0) {
+    return $null
+  }
+
+  $InstallerNames = @($Matches | ForEach-Object { $_.Value } | Sort-Object { [version]($_ -replace "^node-v", "" -replace "-$Arch\.msi$", "") } -Descending)
+  $InstallerName = $InstallerNames[0]
+
+  return [pscustomobject]@{
+    Name = $InstallerName
+    Url = "$NormalizedMirrorUrl$InstallerName"
+  }
+}
+
+function Install-NodeWithMsi {
+  param([bool]$UseDomesticMirror = $true)
+
+  $Arch = Get-NodeInstallerArch
+  if ($UseDomesticMirror) {
+    $LatestUrls = @(
+      $env:NODE_DIST_MIRROR,
+      "https://registry.npmmirror.com/-/binary/node/latest-v$RequiredNodeMajor.x/",
+      "https://npmmirror.com/mirrors/node/latest-v$RequiredNodeMajor.x/"
+    ) | Where-Object { $_ }
+  } else {
+    $LatestUrls = @("https://nodejs.org/dist/latest-v$RequiredNodeMajor.x/")
+  }
+
+  foreach ($LatestUrl in $LatestUrls) {
+    try {
+      $NormalizedLatestUrl = $LatestUrl.TrimEnd("/") + "/"
+      Write-ManturLog "Checking Node.js $RequiredNodeMajor installer mirror: $NormalizedLatestUrl"
+
+      $Asset = Get-NodeMsiAsset $NormalizedLatestUrl $Arch
+
+      if (-not $Asset) {
+        Write-ManturLog "Could not find a Node.js installer for Windows $Arch from $NormalizedLatestUrl"
+        continue
+      }
+
+      $InstallerName = $Asset.Name
+      $InstallerUrl = $Asset.Url
+      $InstallerPath = Join-Path $env:TEMP $InstallerName
+
+      if (-not (Invoke-DownloadFile $InstallerUrl $InstallerPath)) {
+        continue
+      }
+
+      Write-ManturLog "Installing $InstallerName..."
+
+      $Process = Start-Process "msiexec.exe" -ArgumentList "/i", "`"$InstallerPath`"", "/qn", "/norestart" -Wait -PassThru
+      if (($Process.ExitCode -ne 0) -and ($Process.ExitCode -ne 3010)) {
+        Write-ManturLog "Node.js MSI installer failed with exit code $($Process.ExitCode)."
+        continue
+      }
+
+      return $true
+    } catch {
+      Write-ManturLog "Node.js MSI installation failed from $($LatestUrl): $($_.Exception.Message)"
+    }
+  }
+
+  return $false
+}
+
 function Install-Node {
-  if (Test-CommandExists "winget") {
-    Write-ManturLog "Node.js $RequiredNodeMajor+ was not found. Installing Node.js LTS with winget..."
-    winget install --id OpenJS.NodeJS.LTS --exact --accept-package-agreements --accept-source-agreements
+  Write-ManturLog "Node.js $RequiredNodeMajor+ was not found. Trying domestic Node.js MSI mirror first..."
+  if (Install-NodeWithMsi -UseDomesticMirror $true) {
     return
   }
 
-  Write-ManturLog "Node.js $RequiredNodeMajor+ was not found, and winget is unavailable."
+  Write-ManturLog "Trying the official Node.js MSI installer..."
+  if (Install-NodeWithMsi -UseDomesticMirror $false) {
+    return
+  }
+
   Write-ManturLog "Install Node.js $RequiredNodeMajor or later from https://nodejs.org, reopen PowerShell, then run this script again."
   exit 1
 }
@@ -95,6 +218,112 @@ function Ensure-Opencode {
   }
 
   Write-ManturLog "opencode $(& opencode --version) is ready."
+}
+
+function Ensure-Pm2 {
+  Update-PathFromSystem
+
+  if (Test-CommandExists "pm2") {
+    Write-ManturLog "pm2 $(& pm2 --version) detected."
+    return
+  }
+
+  Write-ManturLog "pm2 was not found. Installing pm2 globally..."
+  npm install -g pm2
+  Update-PathFromSystem
+
+  if (-not (Test-CommandExists "pm2")) {
+    Write-ManturLog "pm2 installation completed, but the pm2 command is not on PATH."
+    Write-ManturLog "Reopen PowerShell, then run scripts/quick-start.ps1 again."
+    exit 1
+  }
+
+  Write-ManturLog "pm2 $(& pm2 --version) is ready."
+}
+
+function Start-WithPm2 {
+  $Pm2Status = Get-Pm2AppStatus
+
+  if ($Pm2Status -eq "online") {
+    Write-ManturLog "Restarting Mantur Canvas with pm2 at $AppUrl"
+    npm run pm2:reload
+    return
+  }
+
+  Write-ManturLog "Starting Mantur Canvas with pm2 at $AppUrl"
+  npm run pm2:start
+}
+
+function Get-Pm2AppStatus {
+  try {
+    $AppsJson = & pm2 jlist
+    $Apps = $AppsJson | ConvertFrom-Json
+    $App = @($Apps | Where-Object { $_.name -eq $Pm2AppName } | Select-Object -First 1)
+
+    if ($App.Count -eq 0) {
+      return "missing"
+    }
+
+    return [string]$App[0].pm2_env.status
+  } catch {
+    return "unknown"
+  }
+}
+
+function Show-Pm2Diagnostics {
+  Write-ManturLog "PM2 status:"
+  pm2 status
+  Write-ManturLog "Recent PM2 logs for $Pm2AppName:"
+  pm2 logs $Pm2AppName --lines 80 --nostream
+}
+
+function Wait-ForPm2Online {
+  $MaxAttempts = 30
+
+  for ($Attempt = 1; $Attempt -le $MaxAttempts; $Attempt++) {
+    $Status = Get-Pm2AppStatus
+
+    if ($Status -eq "online") {
+      Write-ManturLog "PM2 app is online."
+      return $true
+    }
+
+    if (($Status -eq "stopped") -or ($Status -eq "errored")) {
+      Write-ManturLog "PM2 app status is $Status."
+      return $false
+    }
+
+    Start-Sleep -Seconds 1
+  }
+
+  Write-ManturLog "PM2 app did not become online in time."
+  return $false
+}
+
+function Wait-ForAppUrl {
+  $MaxAttempts = 60
+
+  for ($Attempt = 1; $Attempt -le $MaxAttempts; $Attempt++) {
+    try {
+      $null = Invoke-WebRequest -UseBasicParsing -Uri $AppUrl -TimeoutSec 2
+      Write-ManturLog "Mantur Canvas is ready at $AppUrl"
+      return $true
+    } catch {
+      Start-Sleep -Seconds 1
+    }
+  }
+
+  Write-ManturLog "Mantur Canvas did not respond at $AppUrl in time."
+  return $false
+}
+
+function Open-AppUrl {
+  try {
+    Write-ManturLog "Opening Mantur Canvas at $AppUrl"
+    Start-Process $AppUrl
+  } catch {
+    Write-ManturLog "Could not open browser automatically: $($_.Exception.Message)"
+  }
 }
 
 function Get-NextVersion {
@@ -166,21 +395,46 @@ function Copy-MissingExampleDirectory {
 
 function Initialize-ExampleFiles {
   Write-ManturLog "Preparing local db and skills from example..."
-  New-Item -ItemType Directory -Force -Path (Join-Path $ProjectDir "db") | Out-Null
-  New-Item -ItemType Directory -Force -Path (Join-Path $ProjectDir "skills") | Out-Null
-  Copy-MissingExampleDirectory (Join-Path $ProjectDir "example/db") (Join-Path $ProjectDir "db")
-  Copy-MissingExampleDirectory (Join-Path $ProjectDir "example/skills") (Join-Path $ProjectDir "skills")
+
+  $DbDir = Join-Path $ProjectDir "db"
+  $DbConfigPath = Join-Path $DbDir "config.json"
+  if (Test-Path $DbConfigPath) {
+    Write-ManturLog "db/config.json already exists. Skipping example db copy."
+  } else {
+    New-Item -ItemType Directory -Force -Path $DbDir | Out-Null
+    Copy-MissingExampleDirectory (Join-Path $ProjectDir "example/db") $DbDir
+  }
+
+  $SkillsDir = Join-Path $ProjectDir "skills"
+  if (Test-Path $SkillsDir) {
+    Write-ManturLog "skills directory already exists. Skipping example skills copy."
+  } else {
+    New-Item -ItemType Directory -Force -Path $SkillsDir | Out-Null
+    Copy-MissingExampleDirectory (Join-Path $ProjectDir "example/skills") $SkillsDir
+  }
 }
 
 Set-Location $ProjectDir
 Ensure-Node
 Ensure-Npm
 Ensure-Opencode
+Ensure-Pm2
 Install-Dependencies
 Initialize-ExampleFiles
 
 Write-ManturLog "Building Mantur Canvas for production..."
 npm run build
 
-Write-ManturLog "Starting Mantur Canvas at http://localhost:3000"
-npm run start
+Start-WithPm2
+if (-not (Wait-ForPm2Online)) {
+  Show-Pm2Diagnostics
+  exit 1
+}
+
+if (-not (Wait-ForAppUrl)) {
+  Show-Pm2Diagnostics
+  exit 1
+}
+
+Open-AppUrl
+exit 0

@@ -2,10 +2,11 @@ module.exports = {
   apps: [
     {
       name: "mantur-canvas",
-      script: "npm",
-      args: "run start",
+      script: require.resolve("next/dist/bin/next"),
+      args: "start",
       cwd: __dirname,
       exec_mode: "fork",
+      interpreter: process.execPath,
       instances: 1,
       autorestart: true,
       watch: false,

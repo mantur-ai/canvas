@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REQUIRED_NODE_MAJOR=20
+REQUIRED_NODE_MAJOR=24
+PM2_APP_NAME="mantur-canvas"
+APP_URL="http://localhost:3000"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 log() {
@@ -87,6 +89,114 @@ ensure_opencode() {
   log "opencode $(opencode --version 2>/dev/null || printf 'installed') is ready."
 }
 
+ensure_pm2() {
+  if command_exists pm2; then
+    log "pm2 $(pm2 --version 2>/dev/null || printf 'installed') detected."
+    return
+  fi
+
+  log "pm2 was not found. Installing pm2 globally..."
+  if ! npm install -g pm2; then
+    log "pm2 installation failed. Please check npm permissions or network access, then run this script again."
+    exit 1
+  fi
+
+  if ! command_exists pm2; then
+    log "pm2 installation completed, but the pm2 command is not on PATH. Please reopen the terminal and run this script again."
+    exit 1
+  fi
+
+  log "pm2 $(pm2 --version 2>/dev/null || printf 'installed') is ready."
+}
+
+start_with_pm2() {
+  local status
+  status="$(pm2_app_status)"
+
+  if [ "$status" = "online" ]; then
+    log "Restarting Mantur Canvas with pm2 at $APP_URL"
+    npm run pm2:reload
+    return
+  fi
+
+  log "Starting Mantur Canvas with pm2 at $APP_URL"
+  npm run pm2:start
+}
+
+pm2_app_status() {
+  pm2 jlist | node -e "
+const appName = process.argv[1];
+let input = '';
+process.stdin.on('data', (chunk) => input += chunk);
+process.stdin.on('end', () => {
+  try {
+    const apps = JSON.parse(input);
+    const app = apps.find((item) => item.name === appName);
+    process.stdout.write(app?.pm2_env?.status || 'missing');
+  } catch {
+    process.stdout.write('unknown');
+  }
+});
+" "$PM2_APP_NAME"
+}
+
+show_pm2_diagnostics() {
+  log "PM2 status:"
+  pm2 status
+  log "Recent PM2 logs for $PM2_APP_NAME:"
+  pm2 logs "$PM2_APP_NAME" --lines 80 --nostream
+}
+
+wait_for_pm2_online() {
+  local status
+
+  for _ in $(seq 1 30); do
+    status="$(pm2_app_status)"
+
+    if [ "$status" = "online" ]; then
+      log "PM2 app is online."
+      return 0
+    fi
+
+    if [ "$status" = "stopped" ] || [ "$status" = "errored" ]; then
+      log "PM2 app status is $status."
+      return 1
+    fi
+
+    sleep 1
+  done
+
+  log "PM2 app did not become online in time."
+  return 1
+}
+
+wait_for_app_url() {
+  for _ in $(seq 1 60); do
+    if command_exists curl && curl -fsS "$APP_URL" >/dev/null 2>&1; then
+      log "Mantur Canvas is ready at $APP_URL"
+      return 0
+    fi
+
+    sleep 1
+  done
+
+  log "Mantur Canvas did not respond at $APP_URL in time."
+  return 1
+}
+
+open_app_url() {
+  log "Opening Mantur Canvas at $APP_URL"
+
+  if command_exists open; then
+    open "$APP_URL" >/dev/null 2>&1 || true
+    return
+  fi
+
+  if command_exists xdg-open; then
+    xdg-open "$APP_URL" >/dev/null 2>&1 || true
+  fi
+}
+
 next_version() {
   node -p "require('./package.json').dependencies.next.replace(/^[^0-9]*/, '')"
 }
@@ -158,9 +268,20 @@ copy_missing_example_dir() {
 
 initialize_example_files() {
   log "Preparing local db and skills from example..."
-  mkdir -p db skills
-  copy_missing_example_dir "example/db" "db"
-  copy_missing_example_dir "example/skills" "skills"
+
+  if [ -f "db/config.json" ]; then
+    log "db/config.json already exists. Skipping example db copy."
+  else
+    mkdir -p db
+    copy_missing_example_dir "example/db" "db"
+  fi
+
+  if [ -d "skills" ]; then
+    log "skills directory already exists. Skipping example skills copy."
+  else
+    mkdir -p skills
+    copy_missing_example_dir "example/skills" "skills"
+  fi
 }
 
 main() {
@@ -168,6 +289,7 @@ main() {
   ensure_node
   ensure_npm
   ensure_opencode
+  ensure_pm2
 
   install_dependencies
   initialize_example_files
@@ -175,8 +297,18 @@ main() {
   log "Building Mantur Canvas for production..."
   npm run build
 
-  log "Starting Mantur Canvas at http://localhost:3000"
-  npm run start
+  start_with_pm2
+  if ! wait_for_pm2_online; then
+    show_pm2_diagnostics
+    exit 1
+  fi
+
+  if ! wait_for_app_url; then
+    show_pm2_diagnostics
+    exit 1
+  fi
+
+  open_app_url
 }
 
 main "$@"
