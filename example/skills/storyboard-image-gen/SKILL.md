@@ -116,7 +116,7 @@ Before any generation, validate:
 3. Execute exactly one image generation request.
 4. Parse the response safely:
    - If the provider returns a direct image URL, pass it to the backend storage API as `resultUrl`.
-   - If the provider returns `b64_json`, raw base64 image data, or a `data:image/...;base64,...` data URL, split the base64 into chunks and submit them with `append-generated-base64-chunk`, then call `finalize-generated-base64`.
+   - If the provider returns `b64_json`, raw base64 image data, or a `data:image/...;base64,...` data URL, split the base64 into chunks and submit them with `append-generated-base64-chunk`, then call `finalize-generated-base64`. If any chunk request fails, times out, or returns a non-2xx response, stop immediately and report the failure. Do not retry the failed chunk, do not restart the upload, do not regenerate the image, and do not switch to image-bed upload.
    - If the provider returns only a `task_id`, report that async image storage is not supported by this skill unless the response also includes a final URL or base64 image.
    - If the response has no usable image URL or base64 image data, report failure and stop.
 5. Store the generated image by calling the matching backend API form:
@@ -145,18 +145,18 @@ Before any generation, validate:
      --data-binary @-
    ```
 6. Treat the backend JSON response as the source of truth for success. Do not verify by reading files. The backend preserves the existing image prompt; do not patch source prompt fields yourself.
-7. If the API call, response parsing, or backend storage API fails, report the exact error. Do NOT retry. Do NOT mark image generation as success.
+7. If the API call, response parsing, backend storage API, chunk upload, or finalize step fails or times out, report the exact error. Do NOT retry. Do NOT mark image generation as success.
 
 ## Execution Rules
 
 - **Single target**: This skill always generates one storyboard image at a time. The `--only-id <media_id>` parameter identifies which storyboard beat to generate or regenerate.
 - **Canvas-grid compatibility**: If the prompt context includes `Scope: canvas-grid` and `Media ID: <id>`, treat it as `--only-id <id>`. Use the user instruction text as a replacement prompt if provided.
 - **Prompt override is temporary**: The user instruction or chat text may replace the prompt only for this provider request. Never write it back to `images/images.json[].prompt`, `episode prompt`, any source prompt field, or a generation manifest.
-- **One API call**: Call the image generation API exactly once. If it fails, report and stop. Do not retry.
+- **One API call**: Call the image generation API exactly once. If it fails or times out, report and stop. Do not retry.
 - **Curl template authority**: The selected model's `example` curl is the source of truth. Do not hand-roll a different endpoint or request schema when the example already supplies one.
 - **Recipe pack required**: When `[Project Recipe Pack]` is present, apply it to generation as global style, palette, camera, texture, realism, or production constraints.
 - **Base64-only models**: If the selected model only returns `b64_json`, do not retry with URL mode. Treat base64 as the normal output for that model.
-- **Generated base64 chunks**: When the generation provider returns base64, send it to the backend with `append-generated-base64-chunk` in chunks of about 60000 characters, then call `finalize-generated-base64`. Use `curl --data-binary @-` so chunk JSON is passed through stdin rather than as a giant command argument. Do not upload generated base64 to an image bed unless the user explicitly asks for image-bed storage.
+- **Generated base64 chunks**: When the generation provider returns base64, send it to the backend with `append-generated-base64-chunk` in chunks of about 60000 characters, then call `finalize-generated-base64`. Use `curl --data-binary @-` so chunk JSON is passed through stdin rather than as a giant command argument. If any chunk or finalize request fails, times out, or returns a non-2xx response, stop and report the exact error; do not retry. Do not upload generated base64 to an image bed unless the user explicitly asks for image-bed storage.
 - **No `/tmp` response files**: Do not redirect provider output to `/tmp/*.json` or parse it with Python. Keep provider JSON in a shell variable and extract URL/base64 with `jq`.
 - **No manifests**: Do not read, create, update, or delete image generation manifests such as `image-curl-manifest.json`.
 - **No placeholder images**: Never download from placeholder services or generate fallbacks with ImageMagick. If the API fails, report the real error.
