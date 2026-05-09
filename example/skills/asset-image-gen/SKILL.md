@@ -10,16 +10,16 @@ Use this skill when the requested feature is generating asset reference images f
 ## Scope
 
 - Work only inside `{projectRoot}/projects/{projectId}/`.
-- Read only `{projectRoot}/projects/currentProject.json`, `{projectRoot}/projects/{projectId}/project.json`, `{projectRoot}/projects/{projectId}/config.json`, and the single `[Skill Temporary Context]` directory supplied in the command.
+- Read only `{projectRoot}/projects/currentProject.json`, `{projectRoot}/projects/{projectId}/config.json`, and the single `[Skill Temporary Context]` directory supplied in the command.
 - Use `currentProject.json` only to resolve the current project ID when the trigger context does not provide one.
-- Use `project.json` only to read project generation settings: `aspectRatio` and `resolution`.
 - Use the supplied skill temporary context directory to read and analyze the actual `@`-mentioned asset files, reference image files, and temporary image files for this send.
 - Every send receives a unique temporary context directory. Never use a fixed temp path, and never read sibling or older `skill-context` directories.
 - Do not read, scan, validate, analyze, create, update, or delete any project file that is not explicitly listed above.
 - Use trigger context supplied by the UI/agent command for target IDs, overrides, and generation options.
 - If the command includes `[Project Recipe Pack]`, treat it as required project-level style and production constraints.
 - Treat every readable project file as read-only. Do not write, patch, rewrite, normalize, sort, or reformat `config.json`, `currentProject.json`, or any other project file.
-- Do not persist generated media directly. After the model returns a generated image URL or base64 image data, call the backend storage API.
+- Do not persist generated media directly. After the model returns a generated image URL, call the backend storage API.
+- If the model returns `b64_json`, raw base64, or a data URL, split the generated base64 into chunks and submit it to the backend chunk API, then finalize storage through the backend.
 - Never edit files in `skills/` while executing this workflow.
 
 After running, verify success from the backend storage API response only. Do not inspect project files.
@@ -28,7 +28,7 @@ After running, verify success from the backend storage API response only. Do not
 
 ### Backend Storage API
 
-The skill must not directly persist generated media or metadata. Store successful model output by calling one of these forms:
+The skill must not directly persist generated media or metadata. Store successful model output by calling:
 
 ```bash
 curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
@@ -36,13 +36,19 @@ curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
   --data '{"action":"store-generated","imageId":"<asset_id>","resultUrl":"<provider_image_url>","category":"<asset_type>","name":"<asset_name>","source":"generate"}'
 ```
 
+For generated base64, split it into chunks and finalize through the backend:
+
 ```bash
 curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
   --header "Content-Type: application/json" \
-  --data '{"action":"store-generated","imageId":"<asset_id>","resultBase64":"<provider_base64_or_data_url>","category":"<asset_type>","name":"<asset_name>","source":"generate"}'
+  --data '{"action":"append-generated-base64-chunk","uploadId":"<upload_id>","chunk":"<base64_chunk>","reset":true}'
+curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+  --header "Content-Type: application/json" \
+  --data '{"action":"finalize-generated-base64","uploadId":"<upload_id>","imageId":"<asset_id>","category":"<asset_type>","name":"<asset_name>","source":"generate"}'
 ```
 
 The backend owns all persistence and validation.
+The backend stores provider URLs through `resultUrl` and generated base64 through `append-generated-base64-chunk` plus `finalize-generated-base64`.
 The backend preserves `images/images.json[].prompt`. Do not send or store request prompts.
 
 ## Trigger Mapping
@@ -63,11 +69,10 @@ The following prompt patterns trigger this skill. Match any of these:
 Before any generation, validate:
 
 1. Resolve `projectId` from trigger context or `{projectRoot}/projects/currentProject.json`.
-2. `{projectRoot}/projects/{projectId}/project.json` exists and contains `aspectRatio` and `resolution`.
-3. `{projectRoot}/projects/{projectId}/config.json` exists and contains `imageModel` with `apiKey` and `example` (curl template). Legacy fallback fields are allowed only for old projects.
-4. The trigger context includes a target asset ID and prompt. If either is missing, stop and report the missing context.
-5. If the prompt contains `@` references, use the supplied `[Skill Temporary Context]` directory and its `context.json` manifest to inspect those files. If a referenced image has no copied file and no usable URL, use its `name`/`label` as a text-only reference instead of failing.
-6. If any gate check fails, stop and report exactly what is missing. Do not proceed.
+2. `{projectRoot}/projects/{projectId}/config.json` exists and contains `imageModel` with `apiKey` and `example` (curl template). Legacy fallback fields are allowed only for old projects.
+3. The trigger context includes a target asset ID and prompt. If either is missing, stop and report the missing context.
+4. If the prompt contains `@` references, use the supplied `[Skill Temporary Context]` directory and its `context.json` manifest to inspect those files. If a referenced image has no copied file and no usable URL, use its `name`/`label` as a text-only reference instead of failing.
+5. If any gate check fails, stop and report exactly what is missing. Do not proceed.
 
 ## Read Config Procedure
 
@@ -79,10 +84,9 @@ Before any generation, validate:
 3. Do not require `selectedModel` or `selectedModels` when `imageModel` exists.
 4. Extract `apiKey` and `example` (the curl command template).
 5. The `example` field contains a working curl template. Treat it as the source of truth for endpoint, method, headers, model, and provider-specific request shape.
-6. Read `project.json.aspectRatio` and `project.json.resolution`; these are the authoritative generation format settings.
-7. Replace only the prompt, auth placeholder, image references, size/aspect/resolution when applicable, and other UI-supplied generation options.
-8. Replace `$ARK_API_KEY` or any placeholder auth value with the actual `apiKey`.
-9. If the API supports image-to-image mode, use only reference URLs supplied in trigger context or copied files from the supplied skill context. Do not resolve references from any project file.
+6. Replace only the prompt, auth placeholder, image references, size/aspect/resolution when applicable, and other UI-supplied generation options.
+7. Replace `$ARK_API_KEY` or any placeholder auth value with the actual `apiKey`.
+8. If the API supports image-to-image mode, use only reference URLs supplied in trigger context or copied files from the supplied skill context. Do not resolve references from any project file.
 
 ## Secret Handling
 
@@ -90,6 +94,7 @@ Before any generation, validate:
 - Do NOT reason about whether `...` means "redaction" vs "display truncation" and then act on that conclusion. The conclusion is irrelevant — the rule below applies in every case.
 - The only correct way to use `apiKey` is to read it fresh from `projects/{projectId}/config.json` inside the same shell tool call that issues the `curl` request, using a one-liner like `KEY=$(jq -r '.imageModel.apiKey' projects/{projectId}/config.json) && curl -H "Authorization: Bearer $KEY" ...` so the key value never has to flow through the model. The shell call may print non-secret response data, status codes, and errors only — never the key, never the auth header.
 - **Use `curl` directly. Do not use Python, Node, or any other runtime to call the provider.** The inline wrapper is a single bash command that reads the key and runs `curl` in the same process.
+- **Do not write provider responses to `/tmp` or any other non-project path.** Parse the curl response in memory with shell and `jq`, then immediately call the backend storage API.
 - Never paste any visible `apiKey` value (full-looking, shortened, or `***`) into a `curl` command emitted as a tool call. Even when the visible key looks complete, route it through the bash key-read above.
 - Never call a provider with a key value lifted from tool output, chat context, or prior assistant text.
 - Do not report that the API key is truncated unless the raw file content actually contains the literal truncated value.
@@ -103,17 +108,16 @@ For each asset to generate:
    - Start from the `example` curl in the selected image model from `config.json`.
    - Replace the `prompt` field with the trigger/user prompt.
    - Merge `[Project Recipe Pack]` into the final prompt without overwriting the user's specific subject/action instructions.
-   - If the target asset category/type is `scenes`, enforce an empty-environment prompt: remove or override any instruction to generate people, characters, human figures, silhouettes, crowds, or passersby. Add this constraint to the final provider prompt: `Scene environment only. No people, no characters, no human figures, no silhouettes, no crowds.`
-   - Apply `project.json.aspectRatio` and `project.json.resolution` to the provider request. Override existing fields such as `aspectRatio`, `aspect_ratio`, `ratio`, `size`, `imageSize`, or `resolution` when present. If the provider template has no supported field, add the format to the final prompt as plain text: `Output aspect ratio: <aspectRatio>. Output resolution: <resolution>.`
+   - If this selected model is known to return only `b64_json`, keep the provider request in its working base64 mode and do not spend a request trying URL mode. If a different selected model supports URL output, prefer URL output to avoid slow generated-base64 upload.
    - Inject the `apiKey` into the authentication header by reading it from `config.json` inside the same bash tool call that runs `curl` (e.g. `KEY=$(jq -r '.imageModel.apiKey' ...) && curl -H "Authorization: Bearer $KEY" ...`) — never paste a visible key value into a `curl` tool call, regardless of how complete it looks, and never call the provider via Python or any other runtime. See **Secret Handling**.
    - Use only context-supplied reference URLs, copied files from the skill context, or options.
    - **`publicUrl` is the preferred reference value when the provider accepts URLs.** For every `@`-mentioned reference, read `[Skill Temporary Context]/context.json`. If the reference's entry has a non-empty `publicUrl`, pass that URL to the provider in the reference image field. The fact that a `publicUrl` is already present means the image bed step has already been done — skip uploading, but never skip passing the URL through to the model. Falling back to the local file or to the asset name should only happen when `publicUrl` is missing or empty.
    - If a referenced image has no available file/URL, use its asset/reference name as text in the prompt and do not include it in reference image content arrays.
 3. Execute exactly one image generation request per asset.
 4. Parse the model response safely:
-   - If the provider returns a direct image URL, pass it to the backend storage API.
-   - If the provider returns base64 image data or a `data:image/...;base64,...` data URL, pass it to the backend storage API as `resultBase64`. Do not decode or write files from the skill.
-   - If the provider returns a `task_id`, report that async image task storage is not supported by this skill yet.
+   - If the provider returns a direct image URL, pass it to the backend storage API as `resultUrl`.
+   - If the provider returns `b64_json`, raw base64 image data, or a `data:image/...;base64,...` data URL, split the base64 into chunks and submit them with `append-generated-base64-chunk`, then call `finalize-generated-base64`.
+   - If the provider returns only a `task_id`, report that async image storage is not supported by this skill unless the response also includes a final URL or base64 image.
    - If the response has no usable image URL or base64 image data, report failure and stop.
 5. Store the generated image by calling the matching backend API form:
    ```bash
@@ -121,11 +125,24 @@ For each asset to generate:
      --header "Content-Type: application/json" \
      --data '{"action":"store-generated","imageId":"<asset_id>","resultUrl":"<provider_image_url>","category":"<asset_type>","name":"<asset_name>","source":"generate"}'
    ```
-   or:
+   For base64 output, submit base64 chunks to the backend and finalize.
+   When the provider response is JSON with OpenAI-style `data[0].b64_json`, use a single shell pipeline like:
    ```bash
-   curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+   UPLOAD_ID="<asset_id>-$(date +%s)" && \
+   RESPONSE=$(KEY=$(jq -r '.imageModel.apiKey' projects/{projectId}/config.json) && curl -s <provider_url> ... ) && \
+   RESULT_BASE64=$(printf '%s' "$RESPONSE" | jq -r '.data[0].b64_json // empty') && \
+   [ -n "$RESULT_BASE64" ] && \
+   FIRST=true && printf '%s' "$RESULT_BASE64" | fold -w 60000 | while IFS= read -r CHUNK; do \
+     jq -n --arg uploadId "$UPLOAD_ID" --arg chunk "$CHUNK" --argjson reset "$FIRST" '{action:"append-generated-base64-chunk",uploadId:$uploadId,chunk:$chunk,reset:$reset}' | \
+     curl --fail --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+       --header "Content-Type: application/json" \
+       --data-binary @- || exit 1; \
+     FIRST=false; \
+   done && \
+   jq -n --arg uploadId "$UPLOAD_ID" --arg imageId "<asset_id>" --arg category "<asset_type>" --arg name "<asset_name>" '{action:"finalize-generated-base64",uploadId:$uploadId,imageId:$imageId,category:$category,name:$name,source:"generate"}' | \
+   curl --fail --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
      --header "Content-Type: application/json" \
-     --data '{"action":"store-generated","imageId":"<asset_id>","resultBase64":"<provider_base64_or_data_url>","category":"<asset_type>","name":"<asset_name>","source":"generate"}'
+     --data-binary @-
    ```
 6. Treat the backend JSON response as the source of truth for success. Do not verify by reading files. The backend preserves the existing image prompt; do not patch source prompt fields yourself.
 7. If the API call, response parsing, or backend storage API fails, report the exact error. Do NOT retry. Do NOT mark image generation as success.
@@ -138,7 +155,9 @@ For each asset to generate:
 - **One API call per asset**: Call the image generation API exactly once per asset. If it fails, mark as failed and report. Do not retry. Do not try alternative models or parameters.
 - **Curl template authority**: The selected model's `example` curl is the source of truth. Do not hand-roll a different endpoint or request schema when the example already supplies one.
 - **Recipe pack required**: When `[Project Recipe Pack]` is present, apply it to generation as global style, palette, camera, texture, realism, or production constraints.
-- **Backend storage only**: Never download generated images or directly persist metadata from the skill. Send the generated provider URL or base64 image data and app image ID to the backend storage API.
+- **Base64-only models**: If the selected model only returns `b64_json`, do not retry with URL mode. Treat base64 as the normal output for that model.
+- **Generated base64 chunks**: When the generation provider returns base64, send it to the backend with `append-generated-base64-chunk` in chunks of about 60000 characters, then call `finalize-generated-base64`. Use `curl --data-binary @-` so chunk JSON is passed through stdin rather than as a giant command argument. Do not upload generated base64 to an image bed unless the user explicitly asks for image-bed storage.
+- **No `/tmp` response files**: Do not redirect provider output to `/tmp/*.json` or parse it with Python. Keep provider JSON in a shell variable and extract URL/base64 with `jq`.
 - **No manifests**: Do not read, create, update, or delete image generation manifests such as `image-curl-manifest.json`.
 
 - **No placeholder images**: Never download images from placeholder services, external URLs, or generate fallback images with ImageMagick. If the API fails, the asset stays failed with a real error message.

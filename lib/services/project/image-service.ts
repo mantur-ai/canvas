@@ -1,5 +1,5 @@
 // Image asset actions: normalize metadata, write uploads, and link assets to storyboards.
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { v4 as createUuid } from "uuid";
 import type { ProjectDetail, ProjectImageAsset, ProjectStoryboard } from "@/lib/project-types";
@@ -117,6 +117,89 @@ function readGeneratedImageBase64(value: string) {
   if (!extension) return null;
 
   return { buffer, extension };
+}
+
+const GENERATED_BASE64_UPLOAD_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,127}$/i;
+const GENERATED_BASE64_CHUNK_MAX_LENGTH = 1024 * 1024;
+
+function getGeneratedBase64ChunkPath(projectId: string, uploadId: string) {
+  if (!GENERATED_BASE64_UPLOAD_ID_PATTERN.test(uploadId)) {
+    throw new Error("INVALID_GENERATED_BASE64_UPLOAD_ID");
+  }
+
+  const chunkDir = path.resolve(getProjectDir(projectId), "images", ".generated-base64");
+  const chunkPath = path.resolve(chunkDir, `${uploadId}.txt`);
+  assertSafeProjectPath(chunkDir);
+  assertSafeProjectPath(chunkPath);
+  return { chunkDir, chunkPath };
+}
+
+function normalizeGeneratedBase64Chunk(chunk: string) {
+  const normalized = chunk.replace(/\s/g, "");
+  if (
+    !normalized ||
+    normalized.length > GENERATED_BASE64_CHUNK_MAX_LENGTH ||
+    !/^[a-z0-9+/]+={0,2}$/i.test(normalized)
+  ) {
+    throw new Error("INVALID_GENERATED_BASE64_CHUNK");
+  }
+
+  return normalized;
+}
+
+export async function appendGeneratedProjectImageBase64Chunk(params: {
+  chunk: string;
+  projectId: string;
+  reset?: boolean;
+  uploadId: string;
+}): Promise<{ success: true } | { success: false; error: string }> {
+  try {
+    const { chunkDir, chunkPath } = getGeneratedBase64ChunkPath(params.projectId, params.uploadId);
+    await mkdir(chunkDir, { recursive: true });
+    if (params.reset) {
+      await writeFile(chunkPath, "", "utf8");
+    }
+    await appendFile(chunkPath, normalizeGeneratedBase64Chunk(params.chunk), "utf8");
+    return { success: true };
+  } catch (err) {
+    if (err instanceof Error) {
+      return { success: false, error: err.message };
+    }
+    return { success: false, error: "UNKNOWN_ERROR" };
+  }
+}
+
+export async function finalizeGeneratedProjectImageBase64Chunks(params: {
+  category?: string;
+  imageId: string;
+  name?: string;
+  parentId?: string;
+  projectId: string;
+  source?: string;
+  uploadId: string;
+}): Promise<{ success: true; image: ProjectImageAsset; images: ProjectImageAsset[] } | { success: false; error: string }> {
+  try {
+    const { chunkPath } = getGeneratedBase64ChunkPath(params.projectId, params.uploadId);
+    const resultBase64 = await readFile(chunkPath, "utf8");
+    const result = await storeGeneratedProjectImage({
+      category: params.category,
+      imageId: params.imageId,
+      name: params.name,
+      parentId: params.parentId,
+      projectId: params.projectId,
+      resultBase64,
+      source: params.source,
+    });
+    if (!result.success) return result;
+
+    await rm(chunkPath, { force: true });
+    return result;
+  } catch (err) {
+    if (err instanceof Error) {
+      return { success: false, error: err.message };
+    }
+    return { success: false, error: "UNKNOWN_ERROR" };
+  }
 }
 
 export async function replaceProjectImages(params: {

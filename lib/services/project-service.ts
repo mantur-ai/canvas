@@ -77,6 +77,18 @@ export async function storeGeneratedProjectImage(
   return imageService.storeGeneratedProjectImage(params);
 }
 
+export async function appendGeneratedProjectImageBase64Chunk(
+  params: Parameters<typeof imageService.appendGeneratedProjectImageBase64Chunk>[0],
+) {
+  return imageService.appendGeneratedProjectImageBase64Chunk(params);
+}
+
+export async function finalizeGeneratedProjectImageBase64Chunks(
+  params: Parameters<typeof imageService.finalizeGeneratedProjectImageBase64Chunks>[0],
+) {
+  return imageService.finalizeGeneratedProjectImageBase64Chunks(params);
+}
+
 export async function storeProjectImagePublicUrl(
   params: Parameters<typeof imageService.storeProjectImagePublicUrl>[0],
 ) {

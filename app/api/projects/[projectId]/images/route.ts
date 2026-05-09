@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import {
   addExistingImageToProjectAssets,
   addProjectImageToStoryboard,
+  appendGeneratedProjectImageBase64Chunk,
   clearProjectImageFile,
   createProjectImage,
   deleteProjectImage,
+  finalizeGeneratedProjectImageBase64Chunks,
   getProjectImages,
   replaceProjectImages,
   resolveProjectImagePublicUrl,
@@ -129,16 +131,19 @@ export async function PATCH(request: Request, context: { params: Promise<{ proje
     const body = (await request.json()) as {
       action?: unknown;
       category?: unknown;
+      chunk?: unknown;
       imageId?: unknown;
       images?: unknown;
       name?: unknown;
       parentId?: unknown;
       prompt?: unknown;
       publicUrl?: unknown;
+      reset?: unknown;
       resultBase64?: unknown;
       resultUrl?: unknown;
       source?: unknown;
       storyboardId?: unknown;
+      uploadId?: unknown;
     };
     if (body.action === "bulk-replace" && Array.isArray(body.images)) {
       const result = await replaceProjectImages({
@@ -172,6 +177,44 @@ export async function PATCH(request: Request, context: { params: Promise<{ proje
       const result = await clearProjectImageFile({
         imageId: body.imageId,
         projectId,
+      });
+      if (!result.success) return toErrorResponse();
+
+      return NextResponse.json({
+        image: result.image,
+        images: result.images,
+      });
+    }
+
+    if (
+      body.action === "append-generated-base64-chunk" &&
+      typeof body.uploadId === "string" &&
+      typeof body.chunk === "string"
+    ) {
+      const result = await appendGeneratedProjectImageBase64Chunk({
+        chunk: body.chunk,
+        projectId,
+        reset: body.reset === true,
+        uploadId: body.uploadId,
+      });
+      if (!result.success) return toErrorResponse();
+
+      return NextResponse.json({ success: true });
+    }
+
+    if (
+      body.action === "finalize-generated-base64" &&
+      typeof body.uploadId === "string" &&
+      typeof body.imageId === "string"
+    ) {
+      const result = await finalizeGeneratedProjectImageBase64Chunks({
+        category: typeof body.category === "string" ? body.category : undefined,
+        imageId: body.imageId,
+        name: typeof body.name === "string" ? body.name : undefined,
+        parentId: typeof body.parentId === "string" && body.parentId ? body.parentId : undefined,
+        projectId,
+        source: typeof body.source === "string" ? body.source : undefined,
+        uploadId: body.uploadId,
       });
       if (!result.success) return toErrorResponse();
 
