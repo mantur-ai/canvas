@@ -17,6 +17,7 @@
     "start": "next start",
     "pm2:start": "pm2 start ecosystem.config.cjs --update-env",
     "pm2:reload": "pm2 reload ecosystem.config.cjs --update-env",
+    "pm2:delete": "pm2 delete mantur-canvas",
     "pm2:stop": "pm2 stop mantur-canvas",
     "lint": "oxlint .",
     "format": "oxfmt .",

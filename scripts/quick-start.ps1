@@ -250,6 +250,11 @@ function Start-WithPm2 {
     return
   }
 
+  if (($Pm2Status -ne "missing") -and ($Pm2Status -ne "unknown")) {
+    Write-ManturLog "Removing existing PM2 app in $Pm2Status status before starting..."
+    npm run pm2:delete
+  }
+
   Write-ManturLog "Starting Mantur Canvas with pm2 at $AppUrl"
   npm run pm2:start
 }

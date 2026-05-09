@@ -119,6 +119,11 @@ start_with_pm2() {
     return
   fi
 
+  if [ "$status" != "missing" ] && [ "$status" != "unknown" ]; then
+    log "Removing existing PM2 app in $status status before starting..."
+    npm run pm2:delete
+  fi
+
   log "Starting Mantur Canvas with pm2 at $APP_URL"
   npm run pm2:start
 }

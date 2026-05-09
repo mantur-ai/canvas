@@ -134,6 +134,11 @@ function startWithPm2() {
     return;
   }
 
+  if (status !== "missing" && status !== "unknown") {
+    log(`Removing existing PM2 app in ${status} status before starting...`);
+    run("npm", ["run", "pm2:delete"]);
+  }
+
   log(`Starting Mantur Canvas with pm2 at ${APP_URL}`);
   run("npm", ["run", "pm2:start"]);
 }
