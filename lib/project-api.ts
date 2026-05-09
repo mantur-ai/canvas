@@ -396,9 +396,8 @@ export async function storeGeneratedProjectImage(
     imageId: string;
     name?: string;
     parentId?: string;
-    resultUrl: string;
     source?: string;
-  },
+  } & ({ resultBase64: string; resultUrl?: string } | { resultBase64?: string; resultUrl: string }),
 ): Promise<{ image: ProjectImageAsset; images: ProjectImageAsset[] }> {
   const data = await readJsonResponse<ProjectImagesResponse>(
     await fetch(`/api/projects/${encodeURIComponent(projectId)}/images`, {

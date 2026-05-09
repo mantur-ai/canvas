@@ -19,7 +19,7 @@ Use this skill when the requested feature is generating storyboard beat images (
 - Use trigger context supplied by the UI/agent command for media ID, storyboard name, prompt, references, and generation options.
 - If the command includes `[Project Recipe Pack]`, treat it as required project-level style and production constraints.
 - Treat every readable project file as read-only. Do not write, patch, rewrite, normalize, sort, or reformat `config.json`, `currentProject.json`, or any other project file.
-- Do not persist generated media directly. After the model returns a generated image URL, call the backend storage API.
+- Do not persist generated media directly. After the model returns a generated image URL or base64 image data, call the backend storage API.
 - Never edit files in `skills/` while executing this workflow.
 
 After running, verify success from the backend storage API response only. Do not inspect project files.
@@ -28,12 +28,18 @@ After running, verify success from the backend storage API response only. Do not
 
 ### Backend Storage API
 
-The skill must not directly persist generated media or metadata. Store successful model output by calling:
+The skill must not directly persist generated media or metadata. Store successful model output by calling one of these forms:
 
 ```bash
 curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
   --header "Content-Type: application/json" \
   --data '{"action":"store-generated","imageId":"<media_id>","resultUrl":"<provider_image_url>","category":"reference","name":"<storyboard_name>","source":"generate"}'
+```
+
+```bash
+curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+  --header "Content-Type: application/json" \
+  --data '{"action":"store-generated","imageId":"<media_id>","resultBase64":"<provider_base64_or_data_url>","category":"reference","name":"<storyboard_name>","source":"generate"}'
 ```
 
 The backend owns all persistence and validation.
@@ -105,13 +111,20 @@ Before any generation, validate:
 3. Execute exactly one image generation request.
 4. Parse the response safely:
    - If the provider returns a direct image URL, pass it to the backend storage API.
-   - If the provider returns only base64 image data or a `task_id`, report that the current storage API requires a generated media URL. Do not decode, download, or write files from the skill.
-   - If the response has no usable image URL, report failure and stop.
-5. Store the generated image by calling:
+   - If the provider returns base64 image data or a `data:image/...;base64,...` data URL, pass it to the backend storage API as `resultBase64`. Do not decode or write files from the skill.
+   - If the provider returns a `task_id`, report that async image task storage is not supported by this skill yet.
+   - If the response has no usable image URL or base64 image data, report failure and stop.
+5. Store the generated image by calling the matching backend API form:
    ```bash
    curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
      --header "Content-Type: application/json" \
      --data '{"action":"store-generated","imageId":"<media_id>","resultUrl":"<provider_image_url>","category":"reference","name":"<storyboard_name>","source":"generate"}'
+   ```
+   or:
+   ```bash
+   curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+     --header "Content-Type: application/json" \
+     --data '{"action":"store-generated","imageId":"<media_id>","resultBase64":"<provider_base64_or_data_url>","category":"reference","name":"<storyboard_name>","source":"generate"}'
    ```
 6. Treat the backend JSON response as the source of truth for success. Do not verify by reading files. The backend preserves the existing image prompt; do not patch source prompt fields yourself.
 7. If the API call, response parsing, or backend storage API fails, report the exact error. Do NOT retry. Do NOT mark image generation as success.
@@ -124,7 +137,7 @@ Before any generation, validate:
 - **One API call**: Call the image generation API exactly once. If it fails, report and stop. Do not retry.
 - **Curl template authority**: The selected model's `example` curl is the source of truth. Do not hand-roll a different endpoint or request schema when the example already supplies one.
 - **Recipe pack required**: When `[Project Recipe Pack]` is present, apply it to generation as global style, palette, camera, texture, realism, or production constraints.
-- **Backend storage only**: Never download generated images or directly persist metadata from the skill. Send the generated provider URL and app image ID to the backend storage API.
+- **Backend storage only**: Never download generated images or directly persist metadata from the skill. Send the generated provider URL or base64 image data and app image ID to the backend storage API.
 - **No image-bed upload**: Do not call `upload-images`, image bed APIs, or `image-url-manifest.json` during image generation.
 - **No manifests**: Do not read, create, update, or delete image generation manifests such as `image-curl-manifest.json`.
 - **No placeholder images**: Never download from placeholder services or generate fallbacks with ImageMagick. If the API fails, report the real error.
