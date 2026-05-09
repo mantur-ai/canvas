@@ -273,7 +273,7 @@ function Get-Pm2AppStatus {
 function Show-Pm2Diagnostics {
   Write-ManturLog "PM2 status:"
   pm2 status
-  Write-ManturLog "Recent PM2 logs for $Pm2AppName:"
+  Write-ManturLog "Recent PM2 logs for ${Pm2AppName}:"
   pm2 logs $Pm2AppName --lines 80 --nostream
 }
 
