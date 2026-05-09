@@ -6,10 +6,7 @@ import { v4 as createUuid } from "uuid";
 import type { ChatWindowSubmitPayload } from "@/components/canvas/chat-window";
 import { resolveGlobalAgentCommand } from "@/components/layout/global-chat-drawer/resolve-agent-command";
 import type { AgentRecord } from "@/lib/agent-schema";
-import {
-  PROJECT_ROOT_PROMPT_TOKEN,
-  type ChatFeatureSkill,
-} from "@/lib/chat-prompts";
+import { PROJECT_ROOT_PROMPT_TOKEN, type ChatFeatureSkill } from "@/lib/chat-prompts";
 import { fetchAgentsCached, fetchConfigCached } from "@/lib/client-data-cache";
 import {
   DEFAULT_WORKFLOW_SKILLS,
@@ -26,10 +23,7 @@ import {
 } from "@/lib/project-api";
 import { useAgentStore } from "@/store/use-agent-store";
 import { useCanvasStore } from "@/store/use-canvas-store";
-import {
-  useLayoutStore,
-  type SidebarLoadingKey,
-} from "@/store/use-layout-store";
+import { useLayoutStore, type SidebarLoadingKey } from "@/store/use-layout-store";
 
 type SilentAgentContext = {
   mediaId?: string;
@@ -38,6 +32,11 @@ type SilentAgentContext = {
   storyboardId?: string;
   scope: "asset-grid" | "canvas-grid" | "storyboard-list";
   featureSkill: ChatFeatureSkill;
+};
+
+type SilentAgentExecuteOptions = {
+  onCompleted?: () => Promise<void> | void;
+  waitForCompletion?: boolean;
 };
 
 type RunningCommand = {
@@ -61,16 +60,10 @@ type AsyncTaskEventSubscription = {
   source: EventSource;
 };
 
-const asyncTaskEventSubscriptions = new Map<
-  string,
-  AsyncTaskEventSubscription
->();
+const asyncTaskEventSubscriptions = new Map<string, AsyncTaskEventSubscription>();
 const ASYNC_TASK_EVENT_CLOSE_DELAY_MS = 500;
 
-async function handleAsyncTaskEvent(
-  projectId: string,
-  payload: AsyncTaskEventPayload,
-) {
+async function handleAsyncTaskEvent(projectId: string, payload: AsyncTaskEventPayload) {
   if (!payload.mediaId || !payload.mediaType) return;
 
   const { addVideoToStoryboard, setCommandStatus, updateImageAsset, updateVideoAsset } =
@@ -161,21 +154,18 @@ function formatAttachmentContext(
     manifestPath: string;
   },
 ) {
-  const contextFileById = new Map(
-    (skillContext?.files ?? []).map((file) => [file.id, file]),
-  );
+  const contextFileById = new Map((skillContext?.files ?? []).map((file) => [file.id, file]));
 
   return payload.attachments
     .map((attachment, index) => {
       const contextFile = contextFileById.get(attachment.id);
-      const filePath =
-        contextFile?.relativePath
-          ? `${skillContext?.contextDir}/${contextFile.relativePath}`
-          : skillContext
+      const filePath = contextFile?.relativePath
+        ? `${skillContext?.contextDir}/${contextFile.relativePath}`
+        : skillContext
           ? `${skillContext.manifestPath}#${attachment.id}`
           : "fileName" in attachment
-          ? `projects/${projectId}/temp/${attachment.fileName}`
-          : attachment.url;
+            ? `projects/${projectId}/temp/${attachment.fileName}`
+            : attachment.url;
 
       return `${index + 1}. ${attachment.label} (${attachment.name}): ${filePath}`;
     })
@@ -185,21 +175,16 @@ function formatAttachmentContext(
 // Generation features always need a skill-context so the skill has a context.json
 // to read for `publicUrl` and reference metadata, even when the user didn't type
 // any @-mentions or attach files explicitly.
-const FEATURE_SKILLS_REQUIRING_CONTEXT: ReadonlySet<ChatFeatureSkill> = new Set(
-  [
-    "asset-generate",
-    "asset-panel-generate",
-    "storyboard-image-generate",
-    "video-generate",
-  ],
-);
+const FEATURE_SKILLS_REQUIRING_CONTEXT: ReadonlySet<ChatFeatureSkill> = new Set([
+  "asset-generate",
+  "asset-panel-generate",
+  "storyboard-image-generate",
+  "video-generate",
+]);
 const buildSkillContextCleanupInstruction = (contextDir: string) =>
   `Before your final response, run \`rm -rf -- "${contextDir}"\` and delete only this exact temporary context directory. Do not delete the parent skill-context directory or any sibling context directories.`;
 
-function needsSkillContext(
-  payload: ChatWindowSubmitPayload,
-  featureSkill: ChatFeatureSkill,
-) {
+function needsSkillContext(payload: ChatWindowSubmitPayload, featureSkill: ChatFeatureSkill) {
   if (FEATURE_SKILLS_REQUIRING_CONTEXT.has(featureSkill)) return true;
   return payload.attachments.length > 0 || /@\{[^}]+}/.test(payload.text);
 }
@@ -310,27 +295,17 @@ function logAgentStreamReceive(featureSkill: ChatFeatureSkill) {
   });
 }
 
-async function hasStoredTargetMedia(
-  projectId: string,
-  context: SilentAgentContext,
-) {
+async function hasStoredTargetMedia(projectId: string, context: SilentAgentContext) {
   if (!context.mediaId) return false;
 
   try {
-    if (
-      context.mediaType === "video" ||
-      context.featureSkill === "video-generate"
-    ) {
+    if (context.mediaType === "video" || context.featureSkill === "video-generate") {
       const videos = await fetchProjectVideos(projectId);
-      return videos.some(
-        (video) => video.id === context.mediaId && video.url.trim().length > 0,
-      );
+      return videos.some((video) => video.id === context.mediaId && video.url.trim().length > 0);
     }
 
     const images = await fetchProjectImages(projectId);
-    return images.some(
-      (image) => image.id === context.mediaId && image.url.trim().length > 0,
-    );
+    return images.some((image) => image.id === context.mediaId && image.url.trim().length > 0);
   } catch {
     return false;
   }
@@ -339,21 +314,14 @@ async function hasStoredTargetMedia(
 export function useSilentAgentCommand() {
   const locale = useLocale();
   const currentProject = useCanvasStore((state) => state.currentProject);
-  const clearCommandStatus = useCanvasStore(
-    (state) => state.clearCommandStatus,
-  );
+  const clearCommandStatus = useCanvasStore((state) => state.clearCommandStatus);
   const setCommandStatus = useCanvasStore((state) => state.setCommandStatus);
-  const finishSidebarLoading = useLayoutStore(
-    (state) => state.finishSidebarLoading,
-  );
-  const startSidebarLoading = useLayoutStore(
-    (state) => state.startSidebarLoading,
-  );
+  const finishSidebarLoading = useLayoutStore((state) => state.finishSidebarLoading);
+  const startSidebarLoading = useLayoutStore((state) => state.startSidebarLoading);
   const selectedAgentId = useAgentStore((state) => state.selectedAgentId);
   const [agents, setAgents] = useState<AgentRecord[]>([]);
-  const [workflowSkills, setWorkflowSkills] = useState<
-    AppConfig["workflowSkills"]
-  >(DEFAULT_WORKFLOW_SKILLS);
+  const [workflowSkills, setWorkflowSkills] =
+    useState<AppConfig["workflowSkills"]>(DEFAULT_WORKFLOW_SKILLS);
   const [runningCount, setRunningCount] = useState(0);
   const runningCommandsRef = useRef<Map<string, RunningCommand>>(new Map());
   const selectedAgent = useMemo(
@@ -406,7 +374,11 @@ export function useSilentAgentCommand() {
   }, []);
 
   const execute = useCallback(
-    async (payload: ChatWindowSubmitPayload, context: SilentAgentContext) => {
+    async (
+      payload: ChatWindowSubmitPayload,
+      context: SilentAgentContext,
+      options: SilentAgentExecuteOptions = {},
+    ) => {
       if (!selectedAgent || !currentProject) return;
 
       const executionKey = getExecutionKey(context);
@@ -434,14 +406,10 @@ export function useSilentAgentCommand() {
           : undefined,
       });
       // Non-global chats must run as fresh commands so they never inherit the global chat session.
-      const resolvedCommand = resolveGlobalAgentCommand(
-        selectedAgent,
-        commandText,
-        {
-          ephemeral: true,
-          isFirstMessage: true,
-        },
-      );
+      const resolvedCommand = resolveGlobalAgentCommand(selectedAgent, commandText, {
+        ephemeral: true,
+        isFirstMessage: true,
+      });
 
       logAgentStreamSend({
         argCount: resolvedCommand.args.length,
@@ -463,111 +431,113 @@ export function useSilentAgentCommand() {
       setRunningCount(runningCommandsRef.current.size);
       startSidebarLoading(sidebarLoadingKey);
 
-      try {
-        if (context.mediaId) {
-          setCommandStatus(context.mediaId, "loading");
-        }
-
-        const response = await fetch("/api/agents/execute", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            agentName: resolvedCommand.executable,
-            args: resolvedCommand.args,
-            cwd: "",
-            executionId,
-            locale,
-          }),
-          signal: abortController.signal,
-        });
-
-        if (!response.ok || !response.body) {
-          if (context.mediaId) {
-            const stored = await hasStoredTargetMedia(
-              currentProject.id,
-              context,
-            );
-            setCommandStatus(context.mediaId, stored ? "success" : "error");
-          }
-          return;
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder("utf-8");
+      const runCommand = async () => {
         try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+          if (context.mediaId) {
+            setCommandStatus(context.mediaId, "loading");
+          }
 
-            const chunk = decoder.decode(value, { stream: true });
-            if (chunk) {
+          const response = await fetch("/api/agents/execute", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              agentName: resolvedCommand.executable,
+              args: resolvedCommand.args,
+              cwd: "",
+              executionId,
+              locale,
+            }),
+            signal: abortController.signal,
+          });
+
+          if (!response.ok || !response.body) {
+            if (context.mediaId) {
+              const stored = await hasStoredTargetMedia(currentProject.id, context);
+              setCommandStatus(context.mediaId, stored ? "success" : "error");
+            }
+            return;
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder("utf-8");
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              const chunk = decoder.decode(value, { stream: true });
+              if (chunk) {
+                logAgentStreamReceive(context.featureSkill);
+              }
+            }
+
+            const tailChunk = decoder.decode();
+            if (tailChunk) {
               logAgentStreamReceive(context.featureSkill);
             }
+          } finally {
+            reader.releaseLock();
           }
 
-          const tailChunk = decoder.decode();
-          if (tailChunk) {
-            logAgentStreamReceive(context.featureSkill);
+          if (abortController.signal.aborted) {
+            if (context.mediaId) {
+              clearCommandStatus(context.mediaId);
+            }
+            return;
           }
-        } finally {
-          reader.releaseLock();
-        }
 
-        if (abortController.signal.aborted) {
+          if (context.featureSkill === "storyboard-parse" && context.mediaId) {
+            await normalizeProjectStoryboardAssets(currentProject.id, context.mediaId);
+          }
+
           if (context.mediaId) {
-            clearCommandStatus(context.mediaId);
+            if (shouldVerifyStoredTargetMedia(context)) {
+              const stored = await hasStoredTargetMedia(currentProject.id, context);
+              if (context.featureSkill === "video-generate" && !stored) return;
+              setCommandStatus(context.mediaId, stored ? "success" : "error");
+            } else {
+              setCommandStatus(context.mediaId, "success");
+            }
           }
-          return;
-        }
+        } catch (error) {
+          if (error instanceof Error && error.name === "AbortError") {
+            if (context.mediaId) {
+              clearCommandStatus(context.mediaId);
+            }
+            return;
+          }
 
-        if (context.featureSkill === "storyboard-parse" && context.mediaId) {
-          await normalizeProjectStoryboardAssets(
-            currentProject.id,
-            context.mediaId,
-          );
-        }
-
-        if (context.mediaId) {
-          if (shouldVerifyStoredTargetMedia(context)) {
-            const stored = await hasStoredTargetMedia(
-              currentProject.id,
-              context,
-            );
-            if (context.featureSkill === "video-generate" && !stored) return;
+          if (context.mediaId) {
+            const stored = await hasStoredTargetMedia(currentProject.id, context);
             setCommandStatus(context.mediaId, stored ? "success" : "error");
-          } else {
-            setCommandStatus(context.mediaId, "success");
           }
-        }
-      } catch (error) {
-        if (error instanceof Error && error.name === "AbortError") {
-          if (context.mediaId) {
-            clearCommandStatus(context.mediaId);
+          // Inline grid chat intentionally does not render execution output.
+        } finally {
+          if (!abortController.signal.aborted) {
+            await Promise.resolve(options.onCompleted?.()).catch(() => {
+              // Completion sync is best-effort; command cleanup must still run.
+            });
           }
-          return;
+          if (skillContext) {
+            await deleteProjectSkillContext(currentProject.id, skillContext.contextDir).catch(
+              () => {
+                // Skill context cleanup is best-effort after the agent process exits.
+              },
+            );
+          }
+          const runningCommand = runningCommandsRef.current.get(executionKey);
+          if (runningCommand?.executionId === executionId) {
+            runningCommandsRef.current.delete(executionKey);
+            setRunningCount(runningCommandsRef.current.size);
+          }
+          finishSidebarLoading(sidebarLoadingKey);
         }
+      };
 
-        if (context.mediaId) {
-          const stored = await hasStoredTargetMedia(currentProject.id, context);
-          setCommandStatus(context.mediaId, stored ? "success" : "error");
-        }
-        // Inline grid chat intentionally does not render execution output.
-      } finally {
-        if (skillContext) {
-          await deleteProjectSkillContext(
-            currentProject.id,
-            skillContext.contextDir,
-          ).catch(() => {
-            // Skill context cleanup is best-effort after the agent process exits.
-          });
-        }
-        const runningCommand = runningCommandsRef.current.get(executionKey);
-        if (runningCommand?.executionId === executionId) {
-          runningCommandsRef.current.delete(executionKey);
-          setRunningCount(runningCommandsRef.current.size);
-        }
-        finishSidebarLoading(sidebarLoadingKey);
-      }
+      const runPromise = runCommand();
+      if (options.waitForCompletion === false) return;
+
+      await runPromise;
     },
     [
       currentProject,
@@ -583,26 +553,20 @@ export function useSilentAgentCommand() {
 
   const stop = useCallback(
     (mediaId?: string) => {
-      const runningEntries = [...runningCommandsRef.current.entries()].filter(
-        ([, command]) => (mediaId ? command.mediaId === mediaId : true),
+      const runningEntries = [...runningCommandsRef.current.entries()].filter(([, command]) =>
+        mediaId ? command.mediaId === mediaId : true,
       );
 
       runningEntries.forEach(([executionKey, command]) => {
-        void fetch(
-          `/api/agents/execute?executionId=${encodeURIComponent(command.executionId)}`,
-          {
-            method: "DELETE",
-          },
-        ).catch(() => {
+        void fetch(`/api/agents/execute?executionId=${encodeURIComponent(command.executionId)}`, {
+          method: "DELETE",
+        }).catch(() => {
           // The local abort below still clears inline UI state if explicit cancel fails.
         });
 
         command.abortController.abort();
         if (command.contextDir) {
-          void deleteProjectSkillContext(
-            command.projectId,
-            command.contextDir,
-          ).catch(() => {
+          void deleteProjectSkillContext(command.projectId, command.contextDir).catch(() => {
             // The running command may also clean up in its finally block.
           });
         }

@@ -905,14 +905,22 @@ export function AssetsPanel() {
                         type: "image",
                       });
 
-                      await executeSilentAgentCommand(payload, {
-                        featureSkill: "asset-panel-generate",
-                        mediaId: selectedChatAsset.id,
-                        mediaName: selectedChatAsset.name || selectedChatAsset.id,
-                        mediaType: selectedChatAsset.type,
-                        scope: "asset-grid",
-                      });
-                      await syncAssetData(currentProject.id, false);
+                      await executeSilentAgentCommand(
+                        payload,
+                        {
+                          featureSkill: "asset-panel-generate",
+                          mediaId: selectedChatAsset.id,
+                          mediaName: selectedChatAsset.name || selectedChatAsset.id,
+                          mediaType: selectedChatAsset.type,
+                          scope: "asset-grid",
+                        },
+                        {
+                          onCompleted: async () => {
+                            await syncAssetData(currentProject.id, false);
+                          },
+                          waitForCompletion: false,
+                        },
+                      );
                     } catch {
                       // The agent run depends on the project model config being current.
                     }

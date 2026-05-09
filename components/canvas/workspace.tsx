@@ -695,8 +695,6 @@ function CanvasWorkspaceInner() {
               )?.[0];
 
               void (async () => {
-                let agentRunCompleted = false;
-
                 try {
                   if (targetSelection.item.type === "image" && targetSelection.item.url) {
                     const result = await clearProjectImageFile(projectId, targetSelection.item.id);
@@ -707,53 +705,60 @@ function CanvasWorkspaceInner() {
                   const saved = await saveSelectedProjectModel();
                   if (!saved) return;
 
-                  await executeSilentAgentCommand(payload, {
-                    featureSkill:
-                      targetSelection.item.type === "video"
-                        ? "video-generate"
-                        : isProjectAssetImage(currentProject, targetSelection.item.id)
-                          ? "asset-panel-generate"
-                          : "storyboard-image-generate",
-                    mediaId: targetSelection.item.id,
-                    mediaType: targetSelection.item.type,
-                    storyboardId:
-                      targetSelection.item.type === "video" ? targetSelection.sceneId : undefined,
-                    scope: "canvas-grid",
-                  });
-                  agentRunCompleted = true;
+                  await executeSilentAgentCommand(
+                    payload,
+                    {
+                      featureSkill:
+                        targetSelection.item.type === "video"
+                          ? "video-generate"
+                          : isProjectAssetImage(currentProject, targetSelection.item.id)
+                            ? "asset-panel-generate"
+                            : "storyboard-image-generate",
+                      mediaId: targetSelection.item.id,
+                      mediaType: targetSelection.item.type,
+                      storyboardId:
+                        targetSelection.item.type === "video" ? targetSelection.sceneId : undefined,
+                      scope: "canvas-grid",
+                    },
+                    {
+                      onCompleted: async () => {
+                        if (targetSelection.item.type === "image") {
+                          const images = await fetchProjectImages(projectId);
+                          const updatedImage = images.find(
+                            (image) => image.id === targetSelection.item.id,
+                          );
+                          if (updatedImage) {
+                            updateImageAsset(updatedImage);
+                            if (updatedImage.url.trim()) {
+                              setCommandStatus(targetSelection.item.id, "success");
+                            }
+                          }
+                        } else {
+                          const videos = await fetchProjectVideos(projectId);
+                          const updatedVideo = videos.find(
+                            (video) => video.id === targetSelection.item.id,
+                          );
+                          if (updatedVideo) {
+                            updateVideoAsset(updatedVideo);
+                            if (updatedVideo.url.trim()) {
+                              setCommandStatus(targetSelection.item.id, "success");
+                            }
+                          }
+                        }
 
-                  if (targetSelection.item.type === "image") {
-                    const images = await fetchProjectImages(projectId);
-                    const updatedImage = images.find(
-                      (image) => image.id === targetSelection.item.id,
-                    );
-                    if (updatedImage) {
-                      updateImageAsset(updatedImage);
-                      if (updatedImage.url.trim()) {
-                        setCommandStatus(targetSelection.item.id, "success");
-                      }
-                    }
-                  } else {
-                    const videos = await fetchProjectVideos(projectId);
-                    const updatedVideo = videos.find(
-                      (video) => video.id === targetSelection.item.id,
-                    );
-                    if (updatedVideo) {
-                      updateVideoAsset(updatedVideo);
-                      if (updatedVideo.url.trim()) {
-                        setCommandStatus(targetSelection.item.id, "success");
-                      }
-                    }
-                  }
-
-                  if (targetEpisodeId) {
-                    const canvasData = await fetchProjectCanvasData(projectId, targetEpisodeId);
-                    mergeProjectCanvasData(projectId, targetEpisodeId, canvasData);
-                  }
+                        if (targetEpisodeId) {
+                          const canvasData = await fetchProjectCanvasData(
+                            projectId,
+                            targetEpisodeId,
+                          );
+                          mergeProjectCanvasData(projectId, targetEpisodeId, canvasData);
+                        }
+                      },
+                      waitForCompletion: false,
+                    },
+                  );
                 } catch {
-                  if (!agentRunCompleted) {
-                    setCommandStatus(targetSelection.item.id, "error");
-                  }
+                  setCommandStatus(targetSelection.item.id, "error");
                   // The agent run depends on the project model config being current.
                 }
               })();
