@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 const REQUIRED_NODE_MAJOR = 24;
 const PM2_APP_NAME = "mantur-canvas";
 const APP_URL = "http://localhost:3000";
+const NPM_REGISTRY = "https://registry.npmmirror.com";
 const PROJECT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
 const IS_WINDOWS = process.platform === "win32";
 
@@ -85,6 +86,11 @@ function ensureNpm() {
 
   log("npm was not found. Install npm, then run npm run quick-start again.");
   process.exit(1);
+}
+
+function useNpmMirror() {
+  log(`Configuring npm registry: ${NPM_REGISTRY}`);
+  run("npm", ["config", "set", "registry", NPM_REGISTRY]);
 }
 
 function ensureOpencode() {
@@ -332,6 +338,7 @@ function main() {
   process.chdir(PROJECT_DIR);
   ensureNode();
   ensureNpm();
+  useNpmMirror();
   ensureOpencode();
   ensurePm2();
   installDependencies();

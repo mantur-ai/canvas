@@ -37,7 +37,7 @@ const EMPTY_STATUS: SetupStatus = {
   project: false,
 };
 
-const DELAYED_REFRESH_MS = 3000;
+const BLOCKING_REFRESH_INTERVAL_MS = 3000;
 
 const STEPS: Array<{
   icon: typeof Bot;
@@ -180,12 +180,12 @@ export function OnboardingGuard() {
   useEffect(() => {
     if (!shouldBlock) return;
 
-    const delayedRefreshId = window.setTimeout(() => {
+    const refreshIntervalId = window.setInterval(() => {
       void refreshStatus();
-    }, DELAYED_REFRESH_MS);
+    }, BLOCKING_REFRESH_INTERVAL_MS);
 
     return () => {
-      window.clearTimeout(delayedRefreshId);
+      window.clearInterval(refreshIntervalId);
     };
   }, [refreshStatus, shouldBlock]);
 

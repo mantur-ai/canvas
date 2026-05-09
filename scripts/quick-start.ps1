@@ -3,6 +3,7 @@ $ErrorActionPreference = "Stop"
 $RequiredNodeMajor = 24
 $Pm2AppName = "mantur-canvas"
 $AppUrl = "http://localhost:3000"
+$NpmRegistry = "https://registry.npmmirror.com"
 $ProjectDir = Resolve-Path (Join-Path $PSScriptRoot "..")
 
 function Write-ManturLog {
@@ -191,6 +192,11 @@ function Ensure-Npm {
 
   Write-ManturLog "npm was not found. Reinstall Node.js $RequiredNodeMajor or later, reopen PowerShell, then run this script again."
   exit 1
+}
+
+function Use-NpmMirror {
+  Write-ManturLog "Configuring npm registry: $NpmRegistry"
+  npm config set registry $NpmRegistry
 }
 
 function Ensure-Opencode {
@@ -422,6 +428,7 @@ function Initialize-ExampleFiles {
 Set-Location $ProjectDir
 Ensure-Node
 Ensure-Npm
+Use-NpmMirror
 Ensure-Opencode
 Ensure-Pm2
 Install-Dependencies

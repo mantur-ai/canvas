@@ -4,6 +4,7 @@ set -euo pipefail
 REQUIRED_NODE_MAJOR=24
 PM2_APP_NAME="mantur-canvas"
 APP_URL="http://localhost:3000"
+NPM_REGISTRY="https://registry.npmmirror.com"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 log() {
@@ -67,6 +68,11 @@ ensure_npm() {
   log "npm was not found. Installing npm with Volta..."
   load_volta
   volta install npm
+}
+
+use_npm_mirror() {
+  log "Configuring npm registry: $NPM_REGISTRY"
+  npm config set registry "$NPM_REGISTRY"
 }
 
 ensure_opencode() {
@@ -293,6 +299,7 @@ main() {
   cd "$PROJECT_DIR"
   ensure_node
   ensure_npm
+  use_npm_mirror
   ensure_opencode
   ensure_pm2
 
