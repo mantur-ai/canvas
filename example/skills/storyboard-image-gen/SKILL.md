@@ -31,7 +31,7 @@ After running, verify success from the backend storage API response only. Do not
 The skill must not directly persist generated media or metadata. Store successful model output by calling:
 
 ```bash
-curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
   --header "Content-Type: application/json" \
   --data '{"action":"store-generated","imageId":"<media_id>","resultUrl":"<provider_image_url>","category":"reference","name":"<storyboard_name>","source":"generate"}'
 ```
@@ -39,10 +39,10 @@ curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
 For generated base64, split it into chunks and finalize through the backend:
 
 ```bash
-curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
   --header "Content-Type: application/json" \
   --data '{"action":"append-generated-base64-chunk","uploadId":"<upload_id>","chunk":"<base64_chunk>","reset":true}'
-curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
   --header "Content-Type: application/json" \
   --data '{"action":"finalize-generated-base64","uploadId":"<upload_id>","imageId":"<media_id>","category":"reference","name":"<storyboard_name>","source":"generate"}'
 ```
@@ -121,7 +121,7 @@ Before any generation, validate:
    - If the response has no usable image URL or base64 image data, report failure and stop.
 5. Store the generated image by calling the matching backend API form:
    ```bash
-   curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+   curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
      --header "Content-Type: application/json" \
      --data '{"action":"store-generated","imageId":"<media_id>","resultUrl":"<provider_image_url>","category":"reference","name":"<storyboard_name>","source":"generate"}'
    ```
@@ -134,13 +134,13 @@ Before any generation, validate:
    [ -n "$RESULT_BASE64" ] && \
    FIRST=true && printf '%s' "$RESULT_BASE64" | fold -w 60000 | while IFS= read -r CHUNK; do \
      jq -n --arg uploadId "$UPLOAD_ID" --arg chunk "$CHUNK" --argjson reset "$FIRST" '{action:"append-generated-base64-chunk",uploadId:$uploadId,chunk:$chunk,reset:$reset}' | \
-     curl --fail --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+     curl --noproxy "*" --fail --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
        --header "Content-Type: application/json" \
        --data-binary @- || exit 1; \
      FIRST=false; \
    done && \
    jq -n --arg uploadId "$UPLOAD_ID" --arg imageId "<media_id>" --arg name "<storyboard_name>" '{action:"finalize-generated-base64",uploadId:$uploadId,imageId:$imageId,category:"reference",name:$name,source:"generate"}' | \
-   curl --fail --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+   curl --noproxy "*" --fail --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
      --header "Content-Type: application/json" \
      --data-binary @-
    ```

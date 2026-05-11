@@ -36,7 +36,7 @@ There are two paths for handing the result to the backend, and **only one of the
 - **Direct path (only when the initial generation call already returned a video URL)**: the agent calls `store-generated` directly:
 
   ```bash
-  curl --request PATCH "http://localhost:3000/api/projects/{projectId}/videos" \
+  curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/videos" \
     --header "Content-Type: application/json" \
     --data '{"action":"store-generated","videoId":"<media_id>","resultUrl":"<provider_video_url>","name":"<storyboard_name>","source":"generate","cover":"<cover_url_or_empty>","duration":"<duration_or_empty>"}'
   ```
@@ -64,7 +64,7 @@ In both cases the backend downloads the video, writes files, updates metadata, p
 
    ```bash
    KEY=$(jq -r '.videoModel.apiKey' projects/{projectId}/config.json) && \
-     curl --request POST "http://localhost:3000/api/projects/{projectId}/async-tasks" \
+     curl --noproxy "*" --request POST "http://localhost:3000/api/projects/{projectId}/async-tasks" \
        --header "Content-Type: application/json" \
        --data "$(jq -n \
          --arg mediaId "<media_id>" \

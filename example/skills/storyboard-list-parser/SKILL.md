@@ -27,7 +27,7 @@ The skill does not write files. The backend API is responsible for storing data 
 Submit the parsed storyboards to:
 
 ```bash
-curl --request PUT "http://localhost:3000/api/projects/{projectId}/episode/{episodeId}" \
+curl --noproxy "*" --request PUT "http://localhost:3000/api/projects/{projectId}/episode/{episodeId}" \
   --header "Content-Type: application/json" \
   --data '{"storyboards":[ ... ]}'
 ```
@@ -56,6 +56,32 @@ Only send `name`, `description`, `prompt`, and `videoPrompt` for each storyboard
 - The selected episode ends before the next episode heading. If it is the last scripted episode, stop before the next top-level or outline section, such as `## 五、后续剧情大纲`.
 - Make each beat useful for image and video generation.
 - Use the project recipe/style information from project context when it is available.
+
+## Video Duration Budget
+
+Each storyboard item represents one short generated video shot with a hard 15-second maximum duration budget.
+
+- Every `videoPrompt` must be executable within 8-15 seconds.
+- Prefer 8-12 seconds for normal beats; use up to 15 seconds only for dense but still single-purpose beats.
+- Do not put more than one major action beat, long dialogue block, long narration block, repeated emotional turn, or multiple location/time changes into a single storyboard.
+- If the source script segment needs more than 15 seconds, split it into multiple storyboard items instead of writing one long `videoPrompt`.
+- Each split storyboard must have its own `name`, `description`, `prompt`, and `videoPrompt`.
+- Each `videoPrompt` must contain one clear beginning, one main action or emotional change, and a settled ending.
+- Do not write time segments beyond 15 seconds. Allowed segment ranges must stay within `0-15秒`, such as `0-3秒`, `3-8秒`, `8-12秒`, and `12-15秒`.
+- If dialogue, voiceover, or subtitle-worthy narration is too long for 15 seconds, split it across multiple storyboard items or compress it to the shortest faithful line for the current beat.
+
+## Continuity Rules
+
+Adjacent storyboards must cut together smoothly.
+
+- For every storyboard after the first, `videoPrompt` must explicitly connect to the previous storyboard's ending state unless the script clearly changes time, location, or scene.
+- For every storyboard before the last, the ending state must naturally set up the next storyboard's beginning.
+- Each `videoPrompt` must include a clear start state and end state.
+- The start state should preserve the prior shot's character position, posture, emotional intensity, camera direction, scene, lighting, and important props when the story continues in the same moment.
+- The end state should land on a stable pose, gaze, camera frame, object position, or transition-ready visual that the next storyboard can inherit.
+- If the script requires a discontinuity, write the transition explicitly in `videoPrompt`, such as `切到`, `黑场后`, `屏幕闪白转场`, `数小时后`, `同一地点稍后`, or `Cut to`, `After a black transition`, `Hours later`.
+- Do not allow unexplained jumps in location, time, character state, emotional state, camera scale, or action direction.
+- When splitting a long script segment into multiple storyboard items, make the split points continuous: the previous storyboard's end state should be the next storyboard's start state, with matching scene, light, character pose, and action direction.
 
 ## Output Language
 

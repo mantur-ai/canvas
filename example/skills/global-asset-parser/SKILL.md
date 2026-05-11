@@ -37,7 +37,7 @@ All generated text in the payload — every asset `name` and every `prompt` — 
 Persist the parsed asset catalog by calling:
 
 ```bash
-curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
   --header "Content-Type: application/json" \
   --data '{"action":"bulk-replace","images":[ ... ]}'
 ```
@@ -172,7 +172,7 @@ Do not copy these exact identities into the project unless the script describes 
 4. Send the payload to the bulk-replace API:
 
    ```bash
-   curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+   curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
      --header "Content-Type: application/json" \
      --data '{"action":"bulk-replace","images":[ ... ]}'
    ```
@@ -190,7 +190,7 @@ Do not copy these exact identities into the project unless the script describes 
    - Otherwise issue one `PATCH` per variant to attach it under the base character's `children`:
 
      ```bash
-     curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+     curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
        --header "Content-Type: application/json" \
        --data '{"category":"characters","imageId":"<variant_id>","parentId":"<base_id>"}'
      ```

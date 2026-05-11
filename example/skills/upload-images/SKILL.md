@@ -22,7 +22,7 @@ Do not read or write `image-url-manifest.json`. Do not write project files direc
 Before uploading an image, ask the backend whether the image already has a reachable public URL:
 
 ```bash
-curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
   --header "Content-Type: application/json" \
   --data '{"action":"resolve-public-url","imageId":"<image_id>"}'
 ```
@@ -39,7 +39,7 @@ If no reachable public URL exists:
 4. Store it on the image record through the backend:
 
 ```bash
-curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
   --header "Content-Type: application/json" \
   --data '{"action":"store-public-url","imageId":"<image_id>","publicUrl":"<uploaded_public_url>"}'
 ```

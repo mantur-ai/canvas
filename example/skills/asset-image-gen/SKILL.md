@@ -31,7 +31,7 @@ After running, verify success from the backend storage API response only. Do not
 The skill must not directly persist generated media or metadata. Store successful model output by calling:
 
 ```bash
-curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
   --header "Content-Type: application/json" \
   --data '{"action":"store-generated","imageId":"<asset_id>","resultUrl":"<provider_image_url>","category":"<asset_type>","name":"<asset_name>","source":"generate"}'
 ```
@@ -39,10 +39,10 @@ curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
 For generated base64, split it into chunks and finalize through the backend:
 
 ```bash
-curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
   --header "Content-Type: application/json" \
   --data '{"action":"append-generated-base64-chunk","uploadId":"<upload_id>","chunk":"<base64_chunk>","reset":true}'
-curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
   --header "Content-Type: application/json" \
   --data '{"action":"finalize-generated-base64","uploadId":"<upload_id>","imageId":"<asset_id>","category":"<asset_type>","name":"<asset_name>","source":"generate"}'
 ```
@@ -121,7 +121,7 @@ For each asset to generate:
    - If the response has no usable image URL or base64 image data, report failure and stop.
 5. Store the generated image by calling the matching backend API form:
    ```bash
-   curl --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+   curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
      --header "Content-Type: application/json" \
      --data '{"action":"store-generated","imageId":"<asset_id>","resultUrl":"<provider_image_url>","category":"<asset_type>","name":"<asset_name>","source":"generate"}'
    ```
@@ -134,13 +134,13 @@ For each asset to generate:
    [ -n "$RESULT_BASE64" ] && \
    FIRST=true && printf '%s' "$RESULT_BASE64" | fold -w 60000 | while IFS= read -r CHUNK; do \
      jq -n --arg uploadId "$UPLOAD_ID" --arg chunk "$CHUNK" --argjson reset "$FIRST" '{action:"append-generated-base64-chunk",uploadId:$uploadId,chunk:$chunk,reset:$reset}' | \
-     curl --fail --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+     curl --noproxy "*" --fail --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
        --header "Content-Type: application/json" \
        --data-binary @- || exit 1; \
      FIRST=false; \
    done && \
    jq -n --arg uploadId "$UPLOAD_ID" --arg imageId "<asset_id>" --arg category "<asset_type>" --arg name "<asset_name>" '{action:"finalize-generated-base64",uploadId:$uploadId,imageId:$imageId,category:$category,name:$name,source:"generate"}' | \
-   curl --fail --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
+   curl --noproxy "*" --fail --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
      --header "Content-Type: application/json" \
      --data-binary @-
    ```
