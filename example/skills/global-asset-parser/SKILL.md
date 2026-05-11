@@ -132,6 +132,7 @@ Do not invent brand-new story facts. If details are missing, describe the asset 
   - `电影场景环境参考图，[整体风格]。`
   - `视角：[地点类型、时间、空间布局、光源与方向、色调、关键物件、前中后景层次、氛围情绪]。`
   - `重点：[核心视觉元素]。`
+- Prop prompts must be reference-image ready on a clean white background, like character assets. For every `props` record, write the prompt as one isolated prop/object reference image on a white clean background, with no scene environment, no hands, no people, and no character presence.
 - Prop prompts should make the object identifiable at thumbnail size: silhouette, material, scale, color, markings, wear, and how it appears in the story.
 - Avoid abstract-only wording such as "lonely", "powerful", or "mysterious" unless it is grounded in visual or audible details.
 - Avoid negative phrasing where possible.
