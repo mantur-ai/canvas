@@ -28,7 +28,6 @@ const AGENT_EXECUTE_MESSAGES: Record<string, AgentExecuteMessages> = {
   zh: zhMessages.AgentExecute,
 };
 const RUNNING_AGENT_PROCESSES = new Map<string, AgentChildProcess>();
-const REPLACEMENT_CHARACTER = "\uFFFD";
 
 const formatMessage = (template: string, values: Record<string, string>) =>
   Object.entries(values).reduce(
@@ -111,24 +110,63 @@ const logAgentExecute = (label: string, payload: Record<string, unknown>) => {
 };
 
 const createProcessOutputDecoder = () => {
+  const isWindows = process.platform === "win32";
+
+  if (!isWindows) {
+    const decoder = new TextDecoder("utf-8");
+    return {
+      decode: (data: Buffer) => decoder.decode(data, { stream: true }),
+      flush: () => decoder.decode(),
+    };
+  }
+
+  const pendingBuffers: Buffer[] = [];
+  let confirmedEncoding: "utf-8" | "gb18030" | null = null;
   const utf8Decoder = new TextDecoder("utf-8");
-  const windowsDecoder = process.platform === "win32" ? new TextDecoder("gb18030") : null;
-  let useWindowsFallback = false;
+  const gb18030Decoder = new TextDecoder("gb18030");
 
   const decode = (data: Buffer) => {
-    if (!windowsDecoder) return utf8Decoder.decode(data, { stream: true });
-    if (useWindowsFallback) return windowsDecoder.decode(data, { stream: true });
+    if (confirmedEncoding === "utf-8") {
+      return utf8Decoder.decode(data, { stream: true });
+    }
+    if (confirmedEncoding === "gb18030") {
+      return gb18030Decoder.decode(data, { stream: true });
+    }
 
-    const decoded = utf8Decoder.decode(data, { stream: true });
-    if (!decoded.includes(REPLACEMENT_CHARACTER)) return decoded;
+    pendingBuffers.push(Buffer.from(data));
+    const combined = Buffer.concat(pendingBuffers);
 
-    useWindowsFallback = true;
-    return windowsDecoder.decode(data, { stream: true });
+    const probeDecoder = new TextDecoder("utf-8", { fatal: true });
+    try {
+      const result = probeDecoder.decode(combined);
+      if (combined.length >= 64 || result.length >= 16) {
+        confirmedEncoding = "utf-8";
+        pendingBuffers.length = 0;
+        utf8Decoder.decode(Buffer.alloc(0));
+        return result;
+      }
+      return "";
+    } catch {
+      confirmedEncoding = "gb18030";
+      pendingBuffers.length = 0;
+      return gb18030Decoder.decode(combined, { stream: true });
+    }
   };
 
   const flush = () => {
-    if (!windowsDecoder || !useWindowsFallback) return utf8Decoder.decode();
-    return windowsDecoder.decode();
+    if (confirmedEncoding === "utf-8") return utf8Decoder.decode();
+    if (confirmedEncoding === "gb18030") return gb18030Decoder.decode();
+
+    if (pendingBuffers.length === 0) return "";
+    const combined = Buffer.concat(pendingBuffers);
+    pendingBuffers.length = 0;
+
+    const probeDecoder = new TextDecoder("utf-8", { fatal: true });
+    try {
+      return probeDecoder.decode(combined);
+    } catch {
+      return gb18030Decoder.decode(combined);
+    }
   };
 
   return { decode, flush };
@@ -240,18 +278,26 @@ export async function POST(request: Request) {
           useShell = true;
         }
 
+        const spawnExecutable = isWindows && useShell
+          ? `chcp 65001 >nul && ${executable}`
+          : executable;
+
         logAgentExecute("spawn", {
           args: spawnArgs,
-          command: [executable, ...spawnArgs],
+          command: [spawnExecutable, ...spawnArgs],
           cwd: targetCwd,
-          executable,
+          executable: spawnExecutable,
           executionId,
           shell: useShell,
         });
 
-        const child = spawn(executable, spawnArgs, {
+        const spawnEnv = isWindows
+          ? { ...process.env, PYTHONIOENCODING: "utf-8", PYTHONUTF8: "1" }
+          : process.env;
+
+        const child = spawn(spawnExecutable, spawnArgs, {
           cwd: targetCwd,
-          env: process.env,
+          env: spawnEnv,
           shell: useShell,
           stdio: ["pipe", "pipe", "pipe"],
           windowsHide: true,

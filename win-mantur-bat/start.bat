@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 setlocal enabledelayedexpansion
 title Mantur Canvas Deploy
 
@@ -140,12 +141,21 @@ goto :do_clone
 
 :do_pull
 echo   Project exists at %TARGET%
-echo   Running git pull...
+echo   Fetching latest origin/main...
 cd /d "%TARGET%"
-"!GIT_EXE!" pull
+"!GIT_EXE!" fetch origin main
 if errorlevel 1 (
     echo.
-    echo   ERROR: git pull failed.
+    echo   ERROR: git fetch failed.
+    pause
+    exit /b 1
+)
+
+echo   Resetting local source to origin/main...
+"!GIT_EXE!" reset --hard origin/main
+if errorlevel 1 (
+    echo.
+    echo   ERROR: git reset --hard origin/main failed.
     pause
     exit /b 1
 )
@@ -186,8 +196,17 @@ cd /d "%TARGET%"
 echo   Executing: %QS%
 echo.
 call "%QS%"
+set "QS_EXIT=%errorlevel%"
 echo.
-echo   quick-start.cmd finished with errorlevel: %errorlevel%
+echo   quick-start.cmd finished with errorlevel: %QS_EXIT%
+if not "%QS_EXIT%"=="0" (
+    echo.
+    echo   ERROR: quick-start.cmd failed. Mantur Canvas was not started with the new build.
+    echo   Please check the error above, then run this script again.
+    echo.
+    pause
+    exit /b %QS_EXIT%
+)
 
 echo.
 echo =====================================================
