@@ -38,6 +38,7 @@ set "TARGET=C:\Program Files\mantur-canvas"
 set "GIT_EXE=%ProgramFiles%\Git\cmd\git.exe"
 set "GIT_INSTALLER=%TEMP%\git-installer.exe"
 set "GIT_URL=https://npmmirror.com/mirrors/git-for-windows/v2.47.0.windows.1/Git-2.47.0-64-bit.exe"
+set "FFMPEG_BINARIES_URL=https://cdn.npmmirror.com/binaries/ffmpeg-static"
 
 REM ============================================================
 REM Step 1: Ensure Git

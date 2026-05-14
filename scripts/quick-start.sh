@@ -5,7 +5,10 @@ REQUIRED_NODE_MAJOR=24
 PM2_APP_NAME="mantur-canvas"
 APP_URL="http://localhost:3000"
 NPM_REGISTRY="https://registry.npmmirror.com"
+FFMPEG_BINARIES_URL="https://cdn.npmmirror.com/binaries/ffmpeg-static"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+export FFMPEG_BINARIES_URL
 
 log() {
   printf '[Mantur Canvas] %s\n' "$1"

@@ -4,6 +4,7 @@ $RequiredNodeMajor = 24
 $Pm2AppName = "mantur-canvas"
 $AppUrl = "http://localhost:3000"
 $NpmRegistry = "https://registry.npmmirror.com"
+$env:FFMPEG_BINARIES_URL = "https://cdn.npmmirror.com/binaries/ffmpeg-static"
 $ProjectDir = Resolve-Path (Join-Path $PSScriptRoot "..")
 
 function Write-ManturLog {
