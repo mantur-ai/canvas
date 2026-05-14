@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Bot, CheckCircle2, FolderKanban, Loader2, RefreshCcw, Settings2, Wrench } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -28,6 +28,10 @@ type ConfigResponse = {
 
 type SkillsResponse = {
   skills?: SkillFolder[];
+};
+
+type RefreshStatusOptions = {
+  showLoading?: boolean;
 };
 
 const EMPTY_STATUS: SetupStatus = {
@@ -109,64 +113,79 @@ export function OnboardingGuard() {
   // 只接受最新一次检查结果，避免慢请求把已完成状态又覆盖成旧状态。
   const latestRefreshIdRef = useRef(0);
   const shouldBlockRef = useRef(false);
-  const statusRef = useRef<SetupStatus | null>(null);
+  const refreshStatusRef = useRef<((options?: RefreshStatusOptions) => Promise<void>) | null>(null);
+  const retryTimeoutRef = useRef<number | null>(null);
   const [status, setStatus] = useState<SetupStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadError, setHasLoadError] = useState(false);
-  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
-  const incompleteSteps = useMemo(
-    () => (status ? STEPS.filter((step) => !status[step.key]).map((step) => step.key) : []),
-    [status],
-  );
-  const shouldBlock = hasInitiallyLoaded && (hasLoadError || incompleteSteps.length > 0);
-
   useEffect(() => {
-    shouldBlockRef.current = shouldBlock;
-    setIsOpen(shouldBlock);
-  }, [shouldBlock]);
+    shouldBlockRef.current = isOpen;
+  }, [isOpen]);
 
-  const refreshStatus = useCallback(async (options: { showLoading?: boolean } = {}) => {
+  const clearRetryTimer = useCallback(() => {
+    if (retryTimeoutRef.current === null) return;
+
+    window.clearTimeout(retryTimeoutRef.current);
+    retryTimeoutRef.current = null;
+  }, []);
+
+  const scheduleRetry = useCallback(() => {
+    if (retryTimeoutRef.current !== null) return;
+
+    retryTimeoutRef.current = window.setTimeout(() => {
+      retryTimeoutRef.current = null;
+      void refreshStatusRef.current?.();
+    }, BLOCKING_REFRESH_INTERVAL_MS);
+  }, []);
+
+  const refreshStatus = useCallback(async (options: RefreshStatusOptions = {}) => {
     const showLoading = options.showLoading ?? false;
     const refreshId = latestRefreshIdRef.current + 1;
     latestRefreshIdRef.current = refreshId;
 
+    clearRetryTimer();
     if (showLoading) setIsLoading(true);
     setHasLoadError(false);
 
     try {
-      const previousStatus = statusRef.current;
       const [agents, skills, config, projects] = await Promise.all([
-        previousStatus?.agent ? Promise.resolve(null) : fetchAgentsCached(),
-        previousStatus?.skills ? Promise.resolve(null) : fetchSkills(),
-        previousStatus?.modelApi ? Promise.resolve(null) : fetchConfig(),
-        previousStatus?.project ? Promise.resolve(null) : fetchProjects(),
+        fetchAgentsCached(),
+        fetchSkills(),
+        fetchConfig(),
+        fetchProjects(),
       ]);
 
       if (latestRefreshIdRef.current !== refreshId) return;
 
       const nextStatus = {
-        agent: previousStatus?.agent ?? Boolean(agents && agents.length > 0),
-        skills: previousStatus?.skills ?? Boolean(skills && skills.length > 0),
-        modelApi: previousStatus?.modelApi ?? hasModelApi(config),
-        project: previousStatus?.project ?? Boolean(projects && projects.length > 0),
+        agent: agents.length > 0,
+        skills: skills.length > 0,
+        modelApi: hasModelApi(config),
+        project: projects.length > 0,
       };
-      statusRef.current = nextStatus;
+      const isComplete = isSetupComplete(nextStatus);
       setStatus(nextStatus);
+      setIsOpen(!isComplete);
+      if (!isComplete) scheduleRetry();
     } catch {
       if (latestRefreshIdRef.current !== refreshId) return;
 
       setHasLoadError(true);
-      statusRef.current = EMPTY_STATUS;
       setStatus(EMPTY_STATUS);
+      setIsOpen(true);
+      scheduleRetry();
     } finally {
       if (latestRefreshIdRef.current === refreshId) {
-        setHasInitiallyLoaded(true);
         if (showLoading) setIsLoading(false);
       }
     }
-  }, []);
+  }, [clearRetryTimer, scheduleRetry]);
+
+  useEffect(() => {
+    refreshStatusRef.current = refreshStatus;
+  }, [refreshStatus]);
 
   useEffect(() => {
     const initialCheckId = window.setTimeout(() => {
@@ -185,22 +204,11 @@ export function OnboardingGuard() {
     window.addEventListener("mantur:onboarding-refresh", handleOnboardingRefresh);
     return () => {
       window.clearTimeout(initialCheckId);
+      clearRetryTimer();
       window.removeEventListener("focus", handleFocus);
       window.removeEventListener("mantur:onboarding-refresh", handleOnboardingRefresh);
     };
-  }, [refreshStatus]);
-
-  useEffect(() => {
-    if (!isOpen || (!hasLoadError && isSetupComplete(status))) return;
-
-    const refreshTimeoutId = window.setTimeout(() => {
-      void refreshStatus();
-    }, BLOCKING_REFRESH_INTERVAL_MS);
-
-    return () => {
-      window.clearTimeout(refreshTimeoutId);
-    };
-  }, [hasLoadError, isOpen, refreshStatus, status]);
+  }, [clearRetryTimer, refreshStatus]);
 
   return (
     <Dialog open={isOpen} modal>
