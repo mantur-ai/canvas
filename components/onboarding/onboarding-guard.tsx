@@ -56,7 +56,9 @@ function hasModelApi(config: AppConfig | null) {
 }
 
 function isSetupComplete(status: SetupStatus | null) {
-  return Boolean(status) && STEPS.every((step) => status[step.key]);
+  if (!status) return false;
+
+  return STEPS.every((step) => status[step.key]);
 }
 
 function openAgentManager() {
