@@ -12,9 +12,13 @@ module.exports = {
       watch: false,
       max_memory_restart: "1G",
       env: {
+        LANG: "C.UTF-8",
+        LC_ALL: "C.UTF-8",
         NODE_ENV: "production",
         HOSTNAME: "0.0.0.0",
         PORT: "3000",
+        PYTHONIOENCODING: "utf-8",
+        PYTHONUTF8: "1",
       },
     },
   ],

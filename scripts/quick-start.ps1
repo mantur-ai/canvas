@@ -6,6 +6,12 @@ $AppUrl = "http://localhost:3000"
 $NpmRegistry = "https://registry.npmmirror.com"
 $ProjectDir = Resolve-Path (Join-Path $PSScriptRoot "..")
 
+[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+$env:PYTHONUTF8 = "1"
+$env:PYTHONIOENCODING = "utf-8"
+chcp.com 65001 > $null
+
 function Write-ManturLog {
   param([string]$Message)
   Write-Host "[Mantur Canvas] $Message"

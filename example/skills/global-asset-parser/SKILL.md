@@ -39,8 +39,10 @@ Persist the parsed asset catalog by calling:
 ```bash
 curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
   --header "Content-Type: application/json" \
-  --data '{"action":"bulk-replace","images":[ ... ]}'
+  --data-binary @-
 ```
+
+Send the JSON request body through UTF-8 stdin, not as a command-line `--data '...'` argument. This is required on Windows: Chinese asset names and prompts passed directly in command arguments can be converted by the shell code page into `???` or mojibake before the backend receives them.
 
 **Persistence payload must not include `url`.** Parsing produces text-only records (`name`, `type`, `source`, `prompt`). The backend assigns/preserves `url` on its own — never send a URL value (empty string, placeholder, or otherwise) when persisting parsed assets.
 
@@ -174,8 +176,10 @@ Do not copy these exact identities into the project unless the script describes 
    ```bash
    curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
      --header "Content-Type: application/json" \
-     --data '{"action":"bulk-replace","images":[ ... ]}'
+     --data-binary @-
    ```
+
+   Pipe the UTF-8 JSON body to stdin. Do not put generated Chinese JSON directly in the shell command line. On Windows, prefer a UTF-8 stdin pipeline such as PowerShell with `[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)` before piping to `curl`, or a Node `fetch` call that constructs the JSON object in JavaScript and sends `JSON.stringify(payload)` with `Content-Type: application/json; charset=utf-8`.
 
    Treat the response `images` and `project` fields as the source of truth.
 5. Validate before sending:

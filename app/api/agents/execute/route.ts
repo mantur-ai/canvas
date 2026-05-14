@@ -28,7 +28,12 @@ const AGENT_EXECUTE_MESSAGES: Record<string, AgentExecuteMessages> = {
   zh: zhMessages.AgentExecute,
 };
 const RUNNING_AGENT_PROCESSES = new Map<string, AgentChildProcess>();
-const REPLACEMENT_CHARACTER = "\uFFFD";
+const UTF8_PROCESS_ENV = {
+  LANG: "C.UTF-8",
+  LC_ALL: "C.UTF-8",
+  PYTHONIOENCODING: "utf-8",
+  PYTHONUTF8: "1",
+};
 
 const formatMessage = (template: string, values: Record<string, string>) =>
   Object.entries(values).reduce(
@@ -111,23 +116,36 @@ const logAgentExecute = (label: string, payload: Record<string, unknown>) => {
 };
 
 const createProcessOutputDecoder = () => {
-  const utf8Decoder = new TextDecoder("utf-8");
+  const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
   const windowsDecoder = process.platform === "win32" ? new TextDecoder("gb18030") : null;
   let useWindowsFallback = false;
 
   const decode = (data: Buffer) => {
-    if (!windowsDecoder) return utf8Decoder.decode(data, { stream: true });
+    if (!windowsDecoder) {
+      try {
+        return utf8Decoder.decode(data, { stream: true });
+      } catch {
+        return new TextDecoder("utf-8").decode(data, { stream: true });
+      }
+    }
     if (useWindowsFallback) return windowsDecoder.decode(data, { stream: true });
 
-    const decoded = utf8Decoder.decode(data, { stream: true });
-    if (!decoded.includes(REPLACEMENT_CHARACTER)) return decoded;
-
-    useWindowsFallback = true;
-    return windowsDecoder.decode(data, { stream: true });
+    try {
+      return utf8Decoder.decode(data, { stream: true });
+    } catch {
+      useWindowsFallback = true;
+      return windowsDecoder.decode(data, { stream: true });
+    }
   };
 
   const flush = () => {
-    if (!windowsDecoder || !useWindowsFallback) return utf8Decoder.decode();
+    if (!windowsDecoder || !useWindowsFallback) {
+      try {
+        return utf8Decoder.decode();
+      } catch {
+        return "";
+      }
+    }
     return windowsDecoder.decode();
   };
 
@@ -251,7 +269,10 @@ export async function POST(request: Request) {
 
         const child = spawn(executable, spawnArgs, {
           cwd: targetCwd,
-          env: process.env,
+          env: {
+            ...process.env,
+            ...UTF8_PROCESS_ENV,
+          },
           shell: useShell,
           stdio: ["pipe", "pipe", "pipe"],
           windowsHide: true,
