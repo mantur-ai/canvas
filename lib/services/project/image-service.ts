@@ -500,20 +500,27 @@ export async function storeGeneratedProjectImage(params: {
 
     const currentImages = await normalizeProjectImageAssets(params.projectId);
     const currentImage = currentImages.find((image) => image.id === params.imageId);
-    const sourcePrompt = currentImage?.prompt ?? "";
-    const imageType = params.category
-      ? normalizeProjectImageType(params.category)
-      : (currentImage?.type ?? "reference");
-    const nextImage: ProjectImageAsset = {
-      id: params.imageId,
-      name: params.name ?? currentImage?.name ?? "",
-      publicUrl: currentImage?.publicUrl ?? "",
-      publicUrlUpdatedAt: currentImage?.publicUrlUpdatedAt ?? "",
-      prompt: sourcePrompt,
-      source: params.source ?? currentImage?.source ?? "generate",
-      type: imageType,
-      url: `/api/projects/${encodeURIComponent(params.projectId)}/images/${encodeURIComponent(fileName)}`,
-    };
+    const nextUrl = `/api/projects/${encodeURIComponent(params.projectId)}/images/${encodeURIComponent(fileName)}`;
+    const imageType =
+      currentImage?.type ??
+      (params.category ? normalizeProjectImageType(params.category) : "reference");
+    const nextImage: ProjectImageAsset = currentImage
+      ? {
+          ...currentImage,
+          publicUrl: "",
+          publicUrlUpdatedAt: "",
+          url: nextUrl,
+        }
+      : {
+          id: params.imageId,
+          name: params.name ?? "",
+          publicUrl: "",
+          publicUrlUpdatedAt: "",
+          prompt: "",
+          source: params.source ?? "generate",
+          type: imageType,
+          url: nextUrl,
+        };
     const images = currentImage
       ? currentImages.map((image) => (image.id === params.imageId ? nextImage : image))
       : [nextImage, ...currentImages];

@@ -55,6 +55,10 @@ function hasModelApi(config: AppConfig | null) {
   return config.imageModels.length + config.videoModels.length > 0;
 }
 
+function isSetupComplete(status: SetupStatus | null) {
+  return Boolean(status) && STEPS.every((step) => status[step.key]);
+}
+
 function openAgentManager() {
   window.dispatchEvent(new CustomEvent("mantur:open-agent-manager"));
 }
@@ -108,6 +112,7 @@ export function OnboardingGuard() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadError, setHasLoadError] = useState(false);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   const incompleteSteps = useMemo(
     () => (status ? STEPS.filter((step) => !status[step.key]).map((step) => step.key) : []),
@@ -117,6 +122,7 @@ export function OnboardingGuard() {
 
   useEffect(() => {
     shouldBlockRef.current = shouldBlock;
+    setIsOpen(shouldBlock);
   }, [shouldBlock]);
 
   const refreshStatus = useCallback(async (options: { showLoading?: boolean } = {}) => {
@@ -169,28 +175,33 @@ export function OnboardingGuard() {
       if (!shouldBlockRef.current) return;
       void refreshStatus();
     };
+    const handleOnboardingRefresh = () => {
+      void refreshStatus({ showLoading: true });
+    };
 
     window.addEventListener("focus", handleFocus);
+    window.addEventListener("mantur:onboarding-refresh", handleOnboardingRefresh);
     return () => {
       window.clearTimeout(initialCheckId);
       window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("mantur:onboarding-refresh", handleOnboardingRefresh);
     };
   }, [refreshStatus]);
 
   useEffect(() => {
-    if (!shouldBlock) return;
+    if (!isOpen || (!hasLoadError && isSetupComplete(status))) return;
 
-    const refreshIntervalId = window.setInterval(() => {
+    const refreshTimeoutId = window.setTimeout(() => {
       void refreshStatus();
     }, BLOCKING_REFRESH_INTERVAL_MS);
 
     return () => {
-      window.clearInterval(refreshIntervalId);
+      window.clearTimeout(refreshTimeoutId);
     };
-  }, [refreshStatus, shouldBlock]);
+  }, [hasLoadError, isOpen, refreshStatus, status]);
 
   return (
-    <Dialog open={shouldBlock} modal>
+    <Dialog open={isOpen} modal>
       <DialogContent
         showCloseButton={false}
         onEscapeKeyDown={(event) => event.preventDefault()}

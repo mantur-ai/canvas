@@ -33,7 +33,7 @@ The skill must not directly persist generated media or metadata. Store successfu
 ```bash
 curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
   --header "Content-Type: application/json" \
-  --data '{"action":"store-generated","imageId":"<media_id>","resultUrl":"<provider_image_url>","category":"reference","name":"<storyboard_name>","source":"generate"}'
+  --data '{"action":"store-generated","imageId":"<media_id>","resultUrl":"<provider_image_url>"}'
 ```
 
 For generated base64, split it into chunks and finalize through the backend:
@@ -44,12 +44,12 @@ curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectI
   --data '{"action":"append-generated-base64-chunk","uploadId":"<upload_id>","chunk":"<base64_chunk>","reset":true}'
 curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
   --header "Content-Type: application/json" \
-  --data '{"action":"finalize-generated-base64","uploadId":"<upload_id>","imageId":"<media_id>","category":"reference","name":"<storyboard_name>","source":"generate"}'
+  --data '{"action":"finalize-generated-base64","uploadId":"<upload_id>","imageId":"<media_id>"}'
 ```
 
 The backend owns all persistence and validation.
 The backend stores provider URLs through `resultUrl` and generated base64 through `append-generated-base64-chunk` plus `finalize-generated-base64`.
-The backend preserves `images/images.json[].prompt` and storyboard prompt fields. Do not send or store request prompts.
+For existing storyboard reference images, storage calls must update only the generated image URL/file. Do not send `name`, `prompt`, `category`, or `source`; the backend preserves `images/images.json[].name`, `images/images.json[].prompt`, type, source, and storyboard prompt fields.
 
 ## Trigger Mapping
 
@@ -96,6 +96,7 @@ Before any generation, validate:
 - The only correct way to use `apiKey` is to read it fresh from `projects/{projectId}/config.json` inside the same shell tool call that issues the `curl` request, using a one-liner like `KEY=$(jq -r '.imageModel.apiKey' projects/{projectId}/config.json) && curl -H "Authorization: Bearer $KEY" ...` so the key value never has to flow through the model. The shell call may print non-secret response data, status codes, and errors only — never the key, never the auth header.
 - **Use `curl` directly. Do not use Python, Node, or any other runtime to call the provider.** The inline wrapper is a single bash command that reads the key and runs `curl` in the same process.
 - **Do not write provider responses to `/tmp` or any other non-project path.** Parse the curl response in memory with shell and `jq`, then immediately call the backend storage API.
+- On Windows PowerShell, keep the same secret-handling rule by reading the key and running `curl.exe` in one command, but build JSON with `ConvertTo-Json` instead of nested hand-escaped strings. For backend payload files, use `$payloadPath = Join-Path $env:TEMP 'upload_req.json'` and `[System.IO.File]::WriteAllText($payloadPath, $json, [System.Text.UTF8Encoding]::new($false))`; never use an unquoted expression like `$env:TEMP\\upload_req.json` as a method argument.
 - Never paste any visible `apiKey` value (full-looking, shortened, or `***`) into a `curl` command emitted as a tool call. Even when the visible key looks complete, route it through the bash key-read above.
 - Never call a provider with a key value lifted from tool output, chat context, or prior assistant text.
 - Do not report that the API key is truncated unless the raw file content actually contains the literal truncated value.
@@ -123,7 +124,7 @@ Before any generation, validate:
    ```bash
    curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
      --header "Content-Type: application/json" \
-     --data '{"action":"store-generated","imageId":"<media_id>","resultUrl":"<provider_image_url>","category":"reference","name":"<storyboard_name>","source":"generate"}'
+     --data '{"action":"store-generated","imageId":"<media_id>","resultUrl":"<provider_image_url>"}'
    ```
    For base64 output, submit base64 chunks to the backend and finalize.
    When the provider response is JSON with OpenAI-style `data[0].b64_json`, use a single shell pipeline like:
@@ -139,7 +140,7 @@ Before any generation, validate:
        --data-binary @- || exit 1; \
      FIRST=false; \
    done && \
-   jq -n --arg uploadId "$UPLOAD_ID" --arg imageId "<media_id>" --arg name "<storyboard_name>" '{action:"finalize-generated-base64",uploadId:$uploadId,imageId:$imageId,category:"reference",name:$name,source:"generate"}' | \
+   jq -n --arg uploadId "$UPLOAD_ID" --arg imageId "<media_id>" '{action:"finalize-generated-base64",uploadId:$uploadId,imageId:$imageId}' | \
    curl --noproxy "*" --fail --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
      --header "Content-Type: application/json" \
      --data-binary @-
