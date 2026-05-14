@@ -37,4 +37,4 @@ This version has breaking changes — APIs, conventions, and file structure may 
    Complete typing, no `any`, and no redundant code.
    File reads and writes are safe, and exceptions are catchable.
    ReactFlow nodes are serializable and persistable.
-   Styles are locally scoped and do not pollute the global scope.
+   Styles are locally scoped and do not pollute the global scope  1.
