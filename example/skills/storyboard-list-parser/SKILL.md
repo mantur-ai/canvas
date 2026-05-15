@@ -68,7 +68,10 @@ Each storyboard item represents one short generated video shot with a hard 15-se
 - Each split storyboard must have its own `name`, `description`, `prompt`, and `videoPrompt`.
 - Each `videoPrompt` must contain one clear beginning, one main action or emotional change, and a settled ending.
 - Do not write time segments beyond 15 seconds. Allowed segment ranges must stay within `0-15秒`, such as `0-3秒`, `3-8秒`, `8-12秒`, and `12-15秒`.
-- If dialogue, voiceover, or subtitle-worthy narration is too long for 15 seconds, split it across multiple storyboard items or compress it to the shortest faithful line for the current beat.
+- If dialogue, voiceover, or subtitle-worthy narration from the source script belongs to the beat, preserve it in the `videoPrompt`.
+- If the spoken content does not fit naturally within one 15-second storyboard, split the source segment into multiple storyboard items at natural semantic breaks and distribute the lines in source order.
+- Do not silently drop dialogue, and do not convert a dialogue-bearing source beat into a silent visual beat unless the source script itself has no spoken content.
+- Only make minimal compression when the original wording is repetitive and the story meaning, speaker intent, and emotional turn remain fully intact.
 
 ## Continuity Rules
 
@@ -92,6 +95,29 @@ All generated text in the payload — every storyboard `name`, `description`, `p
 - When applying the **Character Naming Rule** below, look up each character's canonical asset `name` from `images/images.json` as it currently exists. Do not re-translate the asset name — use it verbatim, regardless of the page language, so storyboard prompts always match the persisted character record.
 - Quoted dialogue lines stay in the language they were written in inside `script.md` (do not translate the spoken content). Only narrative/action/camera text follows the page language.
 - If `[Page Language]` is missing from the trigger context, fall back to the script's dominant language.
+
+## Dialogue Preservation Rules
+
+- When the source script contains dialogue, voiceover, or subtitle-worthy narration for a beat, `videoPrompt` must include that spoken content explicitly.
+- Preserve the original spoken wording from `script.md` whenever possible. Do not paraphrase dialogue into action-only description.
+- Keep the speaker identity with each spoken line when the speaker is known.
+- Dialogue must appear inside `videoPrompt`, not only inside `description`.
+- If a source segment contains multiple lines that cannot fit naturally into one 8-15 second shot, split it into consecutive storyboard items and distribute the lines in source order instead of deleting them.
+- A storyboard with no spoken content should be treated as silent only when the corresponding source segment truly has no dialogue, voiceover, or narration.
+- Do not invent dialogue that is absent from the script.
+
+## Video Prompt Structure
+
+For every `videoPrompt`, use a structure that keeps spoken content visible and separable:
+
+- `画面：` / `Visual:`
+- `动作：` / `Action:`
+- `对白：` / `Dialogue:`
+- `声音：` / `Sound:`
+- `结尾状态：` / `End state:`
+
+If the beat contains spoken content, write one or more quoted lines under `对白：` / `Dialogue:` in source order with the speaker name when known.
+If the beat has no spoken content in the source segment, write `对白：无` / `Dialogue: None`.
 
 ## Scene Prompt Rule
 
