@@ -47,18 +47,34 @@ In both cases the backend downloads the video, writes files, updates metadata, p
 
 1. Read `project.json` and `config.json`.
 2. Use `project.json.aspectRatio` and `project.json.resolution` as the authoritative generation format settings.
+   - Treat `project.json.aspectRatio` as the single source of truth for video aspect ratio.
+   - Never reuse an aspect-ratio literal from `videoModel.example` when it differs from `project.json.aspectRatio`.
 3. Use the selected video model from `config.videoModel`.
 4. Use `videoModel.example` as the curl/request template.
-5. Replace only:
+5. Inspect `videoModel.example` and preserve the provider's native request shape:
+   - If the JSON body contains a top-level `images` array, use **image-array mode**.
+   - If the JSON body contains nested image items such as `content[].role: "reference_image"`, use **reference-content mode**.
+   - If both are present, follow the shape that already carries the actual reference images in the template instead of inventing a new one.
+   - Do not convert one provider shape into another. Rebuild the request in the provider's original schema.
+6. Replace only:
    - prompt/content text
    - reference media fields
    - duration and shot type from UI options when supplied
    - aspect ratio and resolution from `project.json`
    - auth placeholders with `videoModel.apiKey`
-6. Override existing provider fields such as `ratio`, `aspect_ratio`, `aspectRatio`, `resolution`, `size`, or `video_size` when present. If the provider template has no supported field, add the format to the final prompt as plain text: `Output aspect ratio: <aspectRatio>. Output resolution: <resolution>.`
-7. Call the video generation endpoint once.
-8. **If the provider returns a final video URL on the initial generation call**, skip polling and go straight to the direct `store-generated` API call.
-9. **If the provider returns a `task_id` (or any async handle)**, do NOT poll the provider yourself. Async handles include top-level fields such as `task_id`, `id`, `taskId`, and nested provider task objects such as `task.id`. A response like `{"task":{"id":"task_...","status":"queued"}}` is an async handle, not a completed generation. Hand the polling spec to the backend `/async-tasks` endpoint and exit immediately. The backend API owns all polling and final persistence.
+7. Override existing provider fields such as `ratio`, `aspect_ratio`, `aspectRatio`, `resolution`, `size`, or `video_size` when present.
+   - Replace every existing structured aspect-ratio field anywhere in the request body, including nested fields such as `metadata.ratio`, with `project.json.aspectRatio`.
+   - For templates that contain a nested field such as `metadata.ratio`, update that exact nested field. Do not add a new top-level ratio field while leaving the old nested value untouched.
+   - If the provider template already contains any structured aspect-ratio field, updating prompt text alone is insufficient and is considered a failure.
+   - If the provider template has no supported structured field, add the format to the final prompt as plain text: `Output aspect ratio: <aspectRatio>. Output resolution: <resolution>.`
+8. Immediately before the provider call, inspect the final request body:
+   - every structured aspect-ratio field must equal `project.json.aspectRatio`
+   - no stale ratio literal from the template may remain when it conflicts with the project ratio, for example no remaining `"16:9"` when `project.json.aspectRatio` is `"9:16"`
+   - every structured resolution field must equal `project.json.resolution`
+   - if validation fails, stop and report the exact mismatch instead of calling the provider
+9. Call the video generation endpoint once.
+10. **If the provider returns a final video URL on the initial generation call**, skip polling and go straight to the direct `store-generated` API call.
+11. **If the provider returns a `task_id` (or any async handle)**, do NOT poll the provider yourself. Async handles include top-level fields such as `task_id`, `id`, `taskId`, and nested provider task objects such as `task.id`. A response like `{"task":{"id":"task_...","status":"queued"}}` is an async handle, not a completed generation. Hand the polling spec to the backend `/async-tasks` endpoint and exit immediately. The backend API owns all polling and final persistence.
 
    Issue this single registration call (still using the same bash key-read pattern from **Secret Handling** so the auth header is materialized inside the shell call and not pasted by the model):
 
@@ -101,7 +117,7 @@ In both cases the backend downloads the video, writes files, updates metadata, p
    - `responseSchema.statusPath` is optional; supply it only if the provider returns the URL only after a status flag flips. Override `successValues` / `failureValues` only when the provider uses unusual labels.
    - Treat the `task` object in the response as proof of registration and stop. **Do not poll yourself afterwards.** The backend will fetch the URL on its own schedule, call `store-generated` to download/persist it, and update `videos/videos.json`.
 
-8. (Direct-URL path only) When step 6 applied, store the generated video by calling the existing `store-generated` API with the URL from the initial response. The `/async-tasks` endpoint already does this for you in the polling path; only do it manually in the direct-URL case.
+12. (Direct-URL path only) When step 10 applied, store the generated video by calling the existing `store-generated` API with the URL from the initial response. The `/async-tasks` endpoint already does this for you in the polling path; only do it manually in the direct-URL case.
 
 If the provider response has no task ID and no video URL, report failure with the exact provider error.
 
@@ -127,9 +143,37 @@ If the provider response has no task ID and no video URL, report failure with th
 - If the provider requires public URLs and a reference has no usable `publicUrl` in `context.json`, call `upload-images` for that image ID; `upload-images` must use the backend `resolve-public-url` / `store-public-url` API and must not use `image-url-manifest.json`. Pass the URL it returns into the provider request — `upload-images` returns the URL whether it just uploaded or reused an existing one.
 - Do not read project image files by yourself.
 
+### Provider Reference Modes
+
+Preserve the selected provider's request schema when placing reference images:
+
+- **image-array mode**:
+  - Use the top-level `images` array already present in the template.
+  - Replace that array with the ordered list of usable reference image URLs for this request.
+  - Do not also synthesize `content[].reference_image` entries unless the template already requires them.
+  - This mode is used by providers such as HappyHorse-style APIs whose template looks like:
+
+    ```json
+    {
+      "model": "happyhorse-1.0-r2v",
+      "prompt": "[Image 1] ... [Image 2] ...",
+      "images": ["https://example.com/1.jpg", "https://example.com/2.jpg"],
+      "size": "720P",
+      "duration": 5,
+      "metadata": { "ratio": "16:9" }
+    }
+    ```
+
+- **reference-content mode**:
+  - Use the existing nested reference structure from the template, such as `content[].role: "reference_image"`.
+  - Replace only the reference media URLs and keep the provider's original item shape.
+  - Do not flatten nested reference items into a top-level `images` array unless the provider template already uses that schema.
+
 For prompt markers:
 
-- Convert exact `@{uuid}` markers to request-time labels such as `@图片1`, `@图片2`.
+- Convert exact `@{uuid}` markers into request-time labels that match the selected provider shape:
+  - in **image-array mode**, use `[Image 1]`, `[Image 2]`, `[Image 3]`
+  - in **reference-content mode**, use `@图片1`, `@图片2` for Chinese prompts or `@Image 1`, `@Image 2` for English prompts unless the template already demonstrates another explicit label convention
 - Label order must follow the ordered reference media list sent to the model.
 - Repeated UUIDs keep the same label.
 - If a referenced image has no file and no usable URL, keep the meaning by using its `name` or `label` as plain text, such as `重要道具为银行卡`.
@@ -140,7 +184,10 @@ For prompt markers:
 Build one final video prompt for the provider:
 
 - Preserve the user's action order, characters, setting, and mood.
-- When a scene/background reference is available, mention it in the final provider prompt as `场景背景参考：@图片N（<scene name>）` or `Scene background reference: @Image N (<scene name>)`, limited to environment continuity.
+- When a scene/background reference is available, mention it with the selected provider's prompt-label convention:
+  - in **image-array mode**: `场景背景参考：[Image N]（<scene name>）` or `Scene background reference: [Image N] (<scene name>)`
+  - in **reference-content mode**: `场景背景参考：@图片N（<scene name>）` or `Scene background reference: @Image N (<scene name>)`
+  Keep scene/background references limited to environment continuity.
 - Merge `[Project Recipe Pack]` as style continuity without replacing the actual action.
 - Include supplied video options naturally, especially duration and shot type.
 - Emphasize motion, camera movement, expression changes, light changes, atmosphere, and sound.
