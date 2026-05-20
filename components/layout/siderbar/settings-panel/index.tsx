@@ -17,7 +17,7 @@ import { SectionTabs } from "./components/section-tabs";
 import { SettingsConfigForm } from "./components/settings-config-form";
 import { EMPTY_CONFIG, EMPTY_FORM_VALUES } from "./constants";
 import type { ConfigItem, ConfigSection, FeedbackKey, SettingsFormValues } from "./types";
-import { createConfigId, getSectionItems, normalizeImageBeds, toFormValues } from "./utils";
+import { getSectionItems, normalizeImageBeds, toFormValues } from "./utils";
 
 export function SettingsPanel() {
   const [activeSection, setActiveSection] = useState<ConfigSection>("image");
@@ -27,7 +27,6 @@ export function SettingsPanel() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isApiKeyVisible, setIsApiKeyVisible] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const form = useForm<SettingsFormValues>({
     defaultValues: EMPTY_FORM_VALUES,
     mode: "onChange",
@@ -39,7 +38,7 @@ export function SettingsPanel() {
     [activeSection, config],
   );
   const selectedItem = activeItems.find((item) => item.id === selectedId);
-  const isCreateMode = selectedId === null;
+  const isCreateMode = false;
   const canSave =
     Boolean(watchedValues.name?.trim()) &&
     Boolean(watchedValues.apiKey?.trim()) &&
@@ -62,7 +61,14 @@ export function SettingsPanel() {
         const payload = await fetchConfigCached();
         if (!isMounted) return;
 
-        if (payload) setConfig(payload);
+        if (payload) {
+          setConfig(payload);
+          const firstItem = getSectionItems(payload, activeSection)[0];
+          if (firstItem) {
+            setSelectedId(firstItem.id);
+            resetForm(activeSection, firstItem);
+          }
+        }
         setFeedbackKey("");
       } catch {
         if (isMounted) setFeedbackKey("modelManager.feedback.loadError");
@@ -76,7 +82,7 @@ export function SettingsPanel() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [activeSection, resetForm]);
 
   const persistConfig = async (nextConfig: AppConfig) => {
     setIsSaving(true);
@@ -103,15 +109,14 @@ export function SettingsPanel() {
 
   const selectSection = (section: ConfigSection) => {
     setActiveSection(section);
-    setSelectedId(null);
-    resetForm(section);
-    setDeleteConfirmId(null);
+    const firstItem = getSectionItems(config, section)[0];
+    setSelectedId(firstItem?.id ?? null);
+    resetForm(section, firstItem);
   };
 
   const selectItem = (item: ConfigItem | null) => {
     setSelectedId(item?.id ?? null);
     resetForm(activeSection, item ?? undefined);
-    setDeleteConfirmId(null);
   };
 
   const buildNextConfig = (id: string, values: SettingsFormValues): AppConfig => {
@@ -172,47 +177,24 @@ export function SettingsPanel() {
   };
 
   const handleSubmit = async (values: SettingsFormValues) => {
-    const id = selectedId ?? createConfigId(activeSection);
-    const saved = await persistConfig(buildNextConfig(id, values));
+    const id = selectedId ?? getSectionItems(config, activeSection)[0]?.id;
+    if (!id) {
+      setFeedbackKey("modelManager.feedback.saveError");
+      return;
+    }
+    const nextConfig = buildNextConfig(id, values);
+    const saved = await persistConfig(nextConfig);
     if (!saved) return;
 
-    setSelectedId(null);
-    resetForm(activeSection);
-    setDeleteConfirmId(null);
+    setSelectedId(id);
+    const savedItem = getSectionItems(nextConfig, activeSection).find(
+      (item) => item.id === id,
+    );
+    resetForm(activeSection, savedItem);
   };
 
   const handleInvalidSubmit = () => {
     setFeedbackKey("modelManager.feedback.saveError");
-  };
-
-  const handleRemove = async (itemId: string) => {
-    if (deleteConfirmId !== itemId) {
-      setDeleteConfirmId(itemId);
-      return;
-    }
-
-    const nextConfig: AppConfig = {
-      imageModels:
-        activeSection === "image"
-          ? config.imageModels.filter((model) => model.id !== itemId)
-          : config.imageModels,
-      videoModels:
-        activeSection === "video"
-          ? config.videoModels.filter((model) => model.id !== itemId)
-          : config.videoModels,
-      imageBeds:
-        activeSection === "imageBed"
-          ? normalizeImageBeds(config.imageBeds.filter((imageBed) => imageBed.id !== itemId))
-          : config.imageBeds,
-      workflowSkills: config.workflowSkills,
-    };
-
-    const saved = await persistConfig(nextConfig);
-    if (!saved) return;
-
-    setSelectedId(null);
-    resetForm(activeSection);
-    setDeleteConfirmId(null);
   };
 
   const handleDefaultImageBedChange = async (itemId: string, checked: boolean) => {
@@ -243,13 +225,9 @@ export function SettingsPanel() {
         <ConfigList
           activeItems={activeItems}
           activeSection={activeSection}
-          deleteConfirmId={deleteConfirmId}
-          isCreateMode={isCreateMode}
           isLoading={isLoading}
           selectedId={selectedId}
-          onCreate={() => selectItem(null)}
           onDefaultChange={(itemId, checked) => void handleDefaultImageBedChange(itemId, checked)}
-          onRemove={(itemId) => void handleRemove(itemId)}
           onSelectItem={selectItem}
         />
       </aside>

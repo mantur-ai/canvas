@@ -12,7 +12,9 @@ import {
   resolveProjectImagePublicUrl,
   storeProjectImagePublicUrl,
   storeGeneratedProjectImage,
+  upsertProjectImages,
   updateProjectImageFile,
+  updateProjectImagePrompt,
 } from "@/lib/services/project-service";
 
 function toErrorResponse() {
@@ -155,6 +157,16 @@ export async function PATCH(request: Request, context: { params: Promise<{ proje
       return NextResponse.json({ images: result.images, project: result.project });
     }
 
+    if (body.action === "bulk-upsert" && Array.isArray(body.images)) {
+      const result = await upsertProjectImages({
+        images: body.images,
+        projectId,
+      });
+      if (!result.success) return toErrorResponse();
+
+      return NextResponse.json({ images: result.images, project: result.project });
+    }
+
     if (
       body.action === "storyboard" &&
       typeof body.storyboardId === "string" &&
@@ -177,6 +189,24 @@ export async function PATCH(request: Request, context: { params: Promise<{ proje
       const result = await clearProjectImageFile({
         imageId: body.imageId,
         projectId,
+      });
+      if (!result.success) return toErrorResponse();
+
+      return NextResponse.json({
+        image: result.image,
+        images: result.images,
+      });
+    }
+
+    if (
+      body.action === "update-prompt" &&
+      typeof body.imageId === "string" &&
+      typeof body.prompt === "string"
+    ) {
+      const result = await updateProjectImagePrompt({
+        imageId: body.imageId,
+        projectId,
+        prompt: body.prompt,
       });
       if (!result.success) return toErrorResponse();
 
@@ -212,6 +242,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ proje
         imageId: body.imageId,
         name: typeof body.name === "string" ? body.name : undefined,
         parentId: typeof body.parentId === "string" && body.parentId ? body.parentId : undefined,
+        prompt: typeof body.prompt === "string" ? body.prompt : undefined,
         projectId,
         source: typeof body.source === "string" ? body.source : undefined,
         uploadId: body.uploadId,
@@ -234,6 +265,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ proje
         imageId: body.imageId,
         name: typeof body.name === "string" ? body.name : undefined,
         parentId: typeof body.parentId === "string" && body.parentId ? body.parentId : undefined,
+        prompt: typeof body.prompt === "string" ? body.prompt : undefined,
         projectId,
         resultBase64: typeof body.resultBase64 === "string" ? body.resultBase64 : undefined,
         resultUrl: typeof body.resultUrl === "string" ? body.resultUrl : undefined,

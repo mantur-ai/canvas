@@ -71,9 +71,18 @@ export type ProjectSkillContext = {
   references: ProjectSkillContextReference[];
 };
 
+export type GenerateProjectMediaAttachment = {
+  fileName?: string;
+  id?: string;
+  label?: string;
+  name?: string;
+  url?: string;
+};
+
 async function readJsonResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    throw new Error("PROJECT_REQUEST_FAILED");
+    const payload = await response.json().catch(() => null) as { message?: unknown } | null;
+    throw new Error(typeof payload?.message === "string" ? payload.message : "PROJECT_REQUEST_FAILED");
   }
 
   return (await response.json()) as T;
@@ -240,6 +249,33 @@ export async function normalizeProjectStoryboardAssets(
   return Array.isArray(data.storyboards) ? data.storyboards : [];
 }
 
+export async function updateProjectStoryboardPrompt(
+  projectId: string,
+  params: {
+    field: "prompt" | "videoPrompt";
+    prompt: string;
+    storyboardId: string;
+  },
+): Promise<{ episodeId: string; storyboards: ProjectStoryboard[] }> {
+  const data = await readJsonResponse<{ episodeId?: string; storyboards?: ProjectStoryboard[] }>(
+    await fetch(`/api/projects/${encodeURIComponent(projectId)}/flow`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "update-storyboard-prompt",
+        ...params,
+      }),
+    }),
+  );
+
+  return {
+    episodeId: data.episodeId ?? "",
+    storyboards: Array.isArray(data.storyboards) ? data.storyboards : [],
+  };
+}
+
 export async function saveProjectSelectedModel(
   projectId: string,
   selectedModel: Omit<ProjectSelectedModelInfo, "selectedAt">,
@@ -389,6 +425,31 @@ export async function clearProjectImageFile(
   };
 }
 
+export async function updateProjectImagePrompt(
+  projectId: string,
+  imageId: string,
+  prompt: string,
+): Promise<{ image: ProjectImageAsset; images: ProjectImageAsset[] }> {
+  const data = await readJsonResponse<ProjectImagesResponse>(
+    await fetch(`/api/projects/${encodeURIComponent(projectId)}/images`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "update-prompt", imageId, prompt }),
+    }),
+  );
+
+  if (!data.image) {
+    throw new Error("PROJECT_IMAGE_PROMPT_UPDATE_FAILED");
+  }
+
+  return {
+    image: data.image,
+    images: Array.isArray(data.images) ? data.images : [data.image],
+  };
+}
+
 export async function storeGeneratedProjectImage(
   projectId: string,
   params: {
@@ -396,6 +457,7 @@ export async function storeGeneratedProjectImage(
     imageId: string;
     name?: string;
     parentId?: string;
+    prompt?: string;
     source?: string;
   } & ({ resultBase64: string; resultUrl?: string } | { resultBase64?: string; resultUrl: string }),
 ): Promise<{ image: ProjectImageAsset; images: ProjectImageAsset[] }> {
@@ -577,6 +639,7 @@ export async function storeGeneratedProjectVideo(
     cover?: string;
     duration?: string;
     name?: string;
+    prompt?: string;
     resultUrl: string;
     source?: string;
     status?: string;
@@ -602,6 +665,88 @@ export async function storeGeneratedProjectVideo(
     video: data.video,
     videos: Array.isArray(data.videos) ? data.videos : [data.video],
   };
+}
+
+export async function updateProjectVideoPrompt(
+  projectId: string,
+  videoId: string,
+  prompt: string,
+): Promise<{ video: ProjectVideoAsset; videos: ProjectVideoAsset[] }> {
+  const data = await readJsonResponse<ProjectVideosResponse>(
+    await fetch(`/api/projects/${encodeURIComponent(projectId)}/videos`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "update-prompt", prompt, videoId }),
+    }),
+  );
+
+  if (!data.video) {
+    throw new Error("PROJECT_VIDEO_PROMPT_UPDATE_FAILED");
+  }
+
+  return {
+    video: data.video,
+    videos: Array.isArray(data.videos) ? data.videos : [data.video],
+  };
+}
+
+export async function generateProjectImage(
+  projectId: string,
+  params: {
+    attachments: GenerateProjectMediaAttachment[];
+    mediaId: string;
+    prompt: string;
+    storyboardId?: string;
+    target: "asset" | "storyboard";
+  },
+): Promise<{ image: ProjectImageAsset; images: ProjectImageAsset[] }> {
+  const data = await readJsonResponse<ProjectImagesResponse>(
+    await fetch(`/api/projects/${encodeURIComponent(projectId)}/generate/image`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(params),
+    }),
+  );
+
+  if (!data.image) {
+    throw new Error("PROJECT_IMAGE_GENERATION_FAILED");
+  }
+
+  return {
+    image: data.image,
+    images: Array.isArray(data.images) ? data.images : [data.image],
+  };
+}
+
+export async function generateProjectVideo(
+  projectId: string,
+  params: {
+    attachments: GenerateProjectMediaAttachment[];
+    mediaId: string;
+    prompt: string;
+    storyboardId: string;
+    videoOptions?: {
+      durationSeconds?: number;
+      shotType?: string;
+    };
+  },
+): Promise<
+  | { mode: "stored"; video: ProjectVideoAsset; videos: ProjectVideoAsset[] }
+  | { mode: "task"; task: unknown }
+> {
+  return readJsonResponse(
+    await fetch(`/api/projects/${encodeURIComponent(projectId)}/generate/video`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(params),
+    }),
+  );
 }
 
 export async function addProjectVideoToStoryboard(

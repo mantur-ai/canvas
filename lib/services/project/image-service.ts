@@ -6,6 +6,7 @@ import type { ProjectDetail, ProjectImageAsset, ProjectStoryboard } from "@/lib/
 import type { CreateProjectImageInput, ProjectTempImageInput } from "./shared";
 import {
   IMAGE_FILE_PATTERN,
+  PROJECT_ASSET_IMAGE_TYPES,
   PROJECT_IMAGE_FILE_PATTERN,
   addImageToProjectAssets,
   assertSafeProjectPath,
@@ -174,6 +175,7 @@ export async function finalizeGeneratedProjectImageBase64Chunks(params: {
   imageId: string;
   name?: string;
   parentId?: string;
+  prompt?: string;
   projectId: string;
   source?: string;
   uploadId: string;
@@ -186,6 +188,7 @@ export async function finalizeGeneratedProjectImageBase64Chunks(params: {
       imageId: params.imageId,
       name: params.name,
       parentId: params.parentId,
+      prompt: params.prompt,
       projectId: params.projectId,
       resultBase64,
       source: params.source,
@@ -263,6 +266,87 @@ export async function replaceProjectImages(params: {
 
     // normalizeProjectImageAssets re-reads images.json, syncs project.json.assets,
     // and remaps any storyboard image references to the surviving IDs.
+    const images = await normalizeProjectImageAssets(params.projectId);
+    const project = await readProjectDetail(params.projectId).catch(() => null);
+
+    return { success: true, images, project };
+  } catch (err) {
+    if (err instanceof Error) {
+      return { success: false, error: err.message };
+    }
+    return { success: false, error: "UNKNOWN_ERROR" };
+  }
+}
+
+export async function upsertProjectImages(params: {
+  images: unknown;
+  projectId: string;
+}): Promise<
+  | { success: true; images: ProjectImageAsset[]; project: ProjectDetail | null }
+  | { success: false; error: string }
+> {
+  try {
+    const projectDir = getProjectDir(params.projectId);
+    const imagesDir = path.resolve(projectDir, "images");
+    const imagesJsonPath = path.resolve(imagesDir, "images.json");
+    assertSafeProjectPath(imagesDir);
+    assertSafeProjectPath(imagesJsonPath);
+
+    if (!Array.isArray(params.images)) {
+      return { success: false, error: "INVALID_IMAGES_PAYLOAD" };
+    }
+
+    const existing = await readFile(imagesJsonPath, "utf8")
+      .then((content) => normalizeProjectImageRecords(JSON.parse(content)).images)
+      .catch((): ProjectImageAsset[] => []);
+    const existingByKey = new Map<string, ProjectImageAsset>();
+    existing.forEach((asset) => {
+      if (!asset.name) return;
+      const key = normalizeAssetMatchKey(asset.type, asset.name);
+      if (!existingByKey.has(key)) existingByKey.set(key, asset);
+    });
+
+    const incoming = params.images.flatMap((entry) => {
+      if (!isRecord(entry)) return [];
+
+      const type = normalizeProjectImageType(entry.type);
+      const name = readString(entry.name);
+      const prompt = readString(entry.prompt) || readString(entry.description);
+      if (!name || !prompt || !PROJECT_ASSET_IMAGE_TYPES.has(type)) return [];
+
+      const match = existingByKey.get(normalizeAssetMatchKey(type, name));
+      const textOnlyEntry = {
+        name,
+        type,
+        source: readString(entry.source) || "generate",
+        prompt,
+      };
+      if (!match) return [textOnlyEntry];
+
+      return [
+        {
+          ...textOnlyEntry,
+          id: match.id,
+          publicUrl: match.publicUrl,
+          publicUrlUpdatedAt: match.publicUrlUpdatedAt,
+          source: match.source || textOnlyEntry.source,
+          url: match.url,
+        },
+      ];
+    });
+
+    const incomingKeys = new Set(
+      incoming.map((asset) => normalizeAssetMatchKey(asset.type, asset.name)),
+    );
+    const merged = [
+      ...existing.filter((asset) => !incomingKeys.has(normalizeAssetMatchKey(asset.type, asset.name))),
+      ...incoming,
+    ];
+    const normalized = normalizeProjectImageRecords(merged);
+
+    await mkdir(imagesDir, { recursive: true });
+    await writeFile(imagesJsonPath, JSON.stringify(normalized.images, null, 2), "utf8");
+
     const images = await normalizeProjectImageAssets(params.projectId);
     const project = await readProjectDetail(params.projectId).catch(() => null);
 
@@ -458,11 +542,45 @@ export async function clearProjectImageFile(params: {
   }
 }
 
+export async function updateProjectImagePrompt(params: {
+  imageId: string;
+  projectId: string;
+  prompt: string;
+}): Promise<{ success: true; image: ProjectImageAsset; images: ProjectImageAsset[] } | { success: false; error: string }> {
+  try {
+    const projectDir = getProjectDir(params.projectId);
+    const imagesDir = path.resolve(projectDir, "images");
+    const imagesJsonPath = path.resolve(imagesDir, "images.json");
+    assertSafeProjectPath(imagesDir);
+    assertSafeProjectPath(imagesJsonPath);
+
+    await mkdir(imagesDir, { recursive: true });
+    const currentImages = await normalizeProjectImageAssets(params.projectId);
+    const currentImage = currentImages.find((image) => image.id === params.imageId);
+    if (!currentImage) return { success: false, error: "IMAGE_NOT_FOUND" };
+
+    const nextImage: ProjectImageAsset = {
+      ...currentImage,
+      prompt: params.prompt,
+    };
+    const images = currentImages.map((image) => (image.id === params.imageId ? nextImage : image));
+    await writeFile(imagesJsonPath, JSON.stringify(images, null, 2), "utf8");
+
+    return { success: true, image: nextImage, images };
+  } catch (err) {
+    if (err instanceof Error) {
+      return { success: false, error: err.message };
+    }
+    return { success: false, error: "UNKNOWN_ERROR" };
+  }
+}
+
 export async function storeGeneratedProjectImage(params: {
   category?: string;
   imageId: string;
   name?: string;
   parentId?: string;
+  prompt?: string;
   projectId: string;
   resultBase64?: string;
   resultUrl?: string;
@@ -509,6 +627,7 @@ export async function storeGeneratedProjectImage(params: {
           ...currentImage,
           publicUrl: "",
           publicUrlUpdatedAt: "",
+          prompt: params.prompt ?? currentImage.prompt,
           url: nextUrl,
         }
       : {
@@ -516,7 +635,7 @@ export async function storeGeneratedProjectImage(params: {
           name: params.name ?? "",
           publicUrl: "",
           publicUrlUpdatedAt: "",
-          prompt: "",
+          prompt: params.prompt ?? "",
           source: params.source ?? "generate",
           type: imageType,
           url: nextUrl,
@@ -562,8 +681,6 @@ export async function storeProjectImagePublicUrl(params: {
   try {
     const publicUrl = params.publicUrl.trim();
     if (!isHttpUrl(publicUrl)) return { success: false, error: "INVALID_PUBLIC_URL" };
-    const reachable = await isReachablePublicUrl(publicUrl);
-    if (!reachable) return { success: false, error: "PUBLIC_URL_UNREACHABLE" };
 
     const imagesJsonPath = path.resolve(getProjectDir(params.projectId), "images", "images.json");
     assertSafeProjectPath(imagesJsonPath);

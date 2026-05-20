@@ -34,19 +34,22 @@ All generated text in the payload — every asset `name` and every `prompt` — 
 
 ## Backend Storage API
 
-Persist the parsed asset catalog by calling:
+Persist the parsed asset catalog in small batches by calling:
 
 ```bash
 curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
   --header "Content-Type: application/json" \
-  --data '{"action":"bulk-replace","images":[ ... ]}'
+  --data '{"action":"bulk-upsert","images":[ ... ]}'
 ```
+
+Use `bulk-upsert`, not `bulk-replace`, for normal parsing. Send at most 5 image records per PATCH request. This keeps JSON payloads short and prevents malformed giant heredocs or tool-output truncation. Do not create `/tmp` payload files. If you need a file for `curl --data-binary`, create it only under `{projectRoot}/projects/{projectId}/agent-payloads/`, keep each file to one small batch, and remove it after the PATCH succeeds.
 
 **Persistence payload must not include `url`.** Parsing produces text-only records (`name`, `type`, `source`, `prompt`). The backend assigns/preserves `url` on its own — never send a URL value (empty string, placeholder, or otherwise) when persisting parsed assets.
 
 The backend will:
 
 - Match each incoming record against the existing asset catalog by `(type, name)` and reuse the existing `id`, `url`, and `source` so previously generated images are not lost.
+- Merge incoming records into the existing catalog. Records not included in the current batch are preserved.
 - Assign a fresh UUID for any new asset.
 - Rebuild the project's grouped asset index from the merged catalog (preserving valid character `children` from prior state, dropping stale IDs).
 - Set `assetsParsed` based on whether the catalog is non-empty.
@@ -168,16 +171,16 @@ Do not copy these exact identities into the project unless the script describes 
 
 1. Load `project.json` from disk; respect the project's stated style/language when constructing the payload (the skill never sends project metadata updates).
 2. Read `script.md` from disk.
-3. Parse `script.md` and build the `images` payload using only `characters`, `scenes`, and `props`. Each entry must include `name`, `type`, `source: "generate"`, and `prompt`. Do not include `id` or `url` — persistence does not require a URL, and the backend will not accept one from this skill.
-4. Send the payload to the bulk-replace API:
+3. Parse `script.md` and build image records using only `characters`, `scenes`, and `props`. Each entry must include `name`, `type`, `source: "generate"`, and `prompt`. Do not include `id` or `url` — persistence does not require a URL, and the backend will not accept one from this skill.
+4. Send records to the backend in small batches, at most 5 image records per request:
 
    ```bash
    curl --noproxy "*" --request PATCH "http://localhost:3000/api/projects/{projectId}/images" \
      --header "Content-Type: application/json" \
-     --data '{"action":"bulk-replace","images":[ ... ]}'
+     --data '{"action":"bulk-upsert","images":[ ... ]}'
    ```
 
-   Treat the response `images` and `project` fields as the source of truth.
+   Treat each response `images` and `project` fields as the source of truth. Continue until all planned records have been upserted. Prefer batching by type: characters first, then scenes, then props.
 5. Validate before sending:
    - `images` is a JSON array.
    - every entry has a non-empty `name`.
@@ -185,7 +188,7 @@ Do not copy these exact identities into the project unless the script describes 
    - every `name` and `prompt` uses the locale supplied by `[Page Language]` (see **Output Language**).
    - no entry contains `url`, `publicUrl`, `publicUrlUpdatedAt`, or placeholder URL fields; parsed assets are text-only.
 6. **Variant Wiring** — for every variant character emitted in step 3 (any `characters` record whose `name` matches `<base>-<tag>`):
-   - Resolve the variant's persisted `id` and the base character's `id` from the `images` array returned by `bulk-replace` (match by `name`).
+   - Resolve the variant's persisted `id` and the base character's `id` from the latest `images` array returned by `bulk-upsert` (match by `name`).
    - If the base character is not in the response (variant has no parent in the catalog), skip wiring for that variant and report it in the summary.
    - Otherwise issue one `PATCH` per variant to attach it under the base character's `children`:
 

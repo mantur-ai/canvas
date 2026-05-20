@@ -79,6 +79,7 @@ export function SettingsConfigForm({
                   <div className="relative">
                     <Input
                       {...field}
+                      disabled
                       placeholder={
                         activeSection === "imageBed"
                           ? t("modelManager.form.imageBedNamePlaceholder")
@@ -180,12 +181,13 @@ export function SettingsConfigForm({
                 <FormControl>
                   <Textarea
                     {...field}
+                    disabled
                     placeholder={
                       activeSection === "imageBed"
                         ? t("modelManager.form.imageBedExamplePlaceholder")
                         : t("modelManager.form.examplePlaceholder")
                     }
-                    className="h-40 resize-none"
+                    className="h-40 resize-none opacity-75"
                   />
                 </FormControl>
                 <FormMessage />

@@ -56,6 +56,7 @@ export type AsyncTaskRecord = {
   duration?: string;
   category?: string;
   parentId?: string;
+  prompt?: string;
   storyboardId?: string;
   poll: AsyncTaskPollSpec;
   responseSchema: AsyncTaskResponseSchema;
@@ -237,6 +238,7 @@ function readTaskRecord(
     duration: readString(value.duration) || undefined,
     category: readString(value.category) || undefined,
     parentId: readString(value.parentId) || undefined,
+    prompt: readString(value.prompt) || undefined,
     storyboardId: readString(value.storyboardId) || undefined,
     poll,
     responseSchema,
@@ -461,6 +463,7 @@ async function persistGeneratedMedia(task: AsyncTaskRecord, resultUrl: string) {
       cover: task.cover,
       duration: task.duration,
       name: task.name,
+      prompt: task.prompt,
       projectId: task.projectId,
       resultUrl,
       source: task.source,
@@ -474,6 +477,7 @@ async function persistGeneratedMedia(task: AsyncTaskRecord, resultUrl: string) {
     imageId: task.mediaId,
     name: task.name,
     parentId: task.parentId,
+    prompt: task.prompt,
     projectId: task.projectId,
     resultUrl,
     source: task.source,
@@ -753,11 +757,12 @@ export async function createAsyncTask(input: {
   name?: string;
   source?: string;
   cover?: string;
-    duration?: string;
-    category?: string;
-    parentId?: string;
-    storyboardId?: string;
-    poll: AsyncTaskPollSpec;
+  duration?: string;
+  category?: string;
+  parentId?: string;
+  prompt?: string;
+  storyboardId?: string;
+  poll: AsyncTaskPollSpec;
   responseSchema: AsyncTaskResponseSchema;
   intervalMs?: number;
   maxDurationMs?: number;
@@ -796,6 +801,7 @@ export async function createAsyncTask(input: {
       duration: input.duration,
       category: input.category,
       parentId: input.parentId,
+      prompt: input.prompt,
       storyboardId: input.storyboardId,
       poll: input.poll,
       responseSchema: input.responseSchema,

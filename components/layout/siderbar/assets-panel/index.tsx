@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Eye, ImageIcon, Info, ListTree, Loader2, Plus, Search, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 
 import { AssetCreateDialog } from "@/components/assets/asset-create-dialog";
 import {
@@ -258,11 +259,13 @@ export function AssetsPanel() {
           syncProjectImages(nextProjectImages);
           setFailedImageIds(new Set());
         }
+        return { images: nextProjectImages, project };
       } catch {
         if (showLoading) {
           setProjectImages([]);
           setFailedImageIds(new Set());
         }
+        return null;
       } finally {
         if (showLoading) setLoadingImages(false);
       }
@@ -492,7 +495,10 @@ export function AssetsPanel() {
       },
     );
 
-    await syncAssetData(currentProject.id, false);
+    const synced = await syncAssetData(currentProject.id, false);
+    if (!synced?.project.assetsParsed || synced.images.length === 0) {
+      toast.error("资产解析没有写入结果，请重试。");
+    }
   };
   const openAssetChat = (assetId: string, anchorElement: HTMLElement) => {
     const anchorRect = anchorElement.getBoundingClientRect();

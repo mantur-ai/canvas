@@ -5,6 +5,7 @@ import {
   getProjectFlow,
   normalizeProjectStoryboardAssets,
   saveProjectFlow,
+  updateProjectStoryboardPrompt,
 } from "@/lib/services/project-service";
 
 function toErrorResponse() {
@@ -68,7 +69,30 @@ export async function POST(
     const body = (await request.json()) as {
       action?: unknown;
       episodeId?: unknown;
+      field?: unknown;
+      prompt?: unknown;
+      storyboardId?: unknown;
     };
+
+    if (
+      body.action === "update-storyboard-prompt" &&
+      (body.field === "prompt" || body.field === "videoPrompt") &&
+      typeof body.prompt === "string" &&
+      typeof body.storyboardId === "string"
+    ) {
+      const result = await updateProjectStoryboardPrompt({
+        field: body.field,
+        projectId,
+        prompt: body.prompt,
+        storyboardId: body.storyboardId,
+      });
+      if (!result.success) return toErrorResponse();
+
+      return NextResponse.json({
+        episodeId: result.episodeId,
+        storyboards: result.storyboards,
+      });
+    }
 
     if (
       body.action !== "normalize-storyboard-assets" ||

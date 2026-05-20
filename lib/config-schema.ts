@@ -22,7 +22,7 @@ export const workflowUploadSkillSchema = z.enum(["upload-images"]);
 export const imageModelSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  apiKey: z.string().min(1),
+  apiKey: z.string(),
   example: z.string().min(1),
   providerId: z.string().min(1).optional(),
 });
@@ -34,7 +34,7 @@ export const videoModelSchema = imageModelSchema.extend({
 export const imageBedSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  apiKey: z.string().min(1),
+  apiKey: z.string(),
   example: z.string().min(1),
   isDefault: z.boolean(),
 });

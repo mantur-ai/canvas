@@ -33,6 +33,12 @@ export async function saveProjectEpisodeStoryboards(
   return canvasService.saveProjectEpisodeStoryboards(params);
 }
 
+export async function updateProjectStoryboardPrompt(
+  params: Parameters<typeof canvasService.updateProjectStoryboardPrompt>[0],
+) {
+  return canvasService.updateProjectStoryboardPrompt(params);
+}
+
 export async function getProjectConfig(projectId: string) {
   return canvasService.getProjectConfig(projectId);
 }
@@ -55,6 +61,12 @@ export async function replaceProjectImages(
   return imageService.replaceProjectImages(params);
 }
 
+export async function upsertProjectImages(
+  params: Parameters<typeof imageService.upsertProjectImages>[0],
+) {
+  return imageService.upsertProjectImages(params);
+}
+
 export async function createProjectImage(params: Parameters<typeof imageService.createProjectImage>[0]) {
   return imageService.createProjectImage(params);
 }
@@ -69,6 +81,12 @@ export async function clearProjectImageFile(
   params: Parameters<typeof imageService.clearProjectImageFile>[0],
 ) {
   return imageService.clearProjectImageFile(params);
+}
+
+export async function updateProjectImagePrompt(
+  params: Parameters<typeof imageService.updateProjectImagePrompt>[0],
+) {
+  return imageService.updateProjectImagePrompt(params);
 }
 
 export async function storeGeneratedProjectImage(
@@ -187,6 +205,12 @@ export async function updateProjectVideoFile(
   params: Parameters<typeof videoService.updateProjectVideoFile>[0],
 ) {
   return videoService.updateProjectVideoFile(params);
+}
+
+export async function updateProjectVideoPrompt(
+  params: Parameters<typeof videoService.updateProjectVideoPrompt>[0],
+) {
+  return videoService.updateProjectVideoPrompt(params);
 }
 
 export async function storeGeneratedProjectVideo(

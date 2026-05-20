@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { appConfigSchema, DEFAULT_WORKFLOW_SKILLS, type AppConfig } from "@/lib/config-schema";
+import { withFixedProviderConfig } from "@/lib/fixed-providers";
 
 const PROJECT_ROOT = process.cwd();
 const CONFIG_DB_DIR = path.resolve(PROJECT_ROOT, "db");
@@ -43,15 +44,16 @@ export async function readConfig(): Promise<AppConfig> {
 
   try {
     const raw = await readFile(CONFIG_DB_PATH, "utf8");
-    return appConfigSchema.parse(JSON.parse(raw));
+    return withFixedProviderConfig(appConfigSchema.parse(JSON.parse(raw)));
   } catch {
-    await writeConfigFile(EMPTY_CONFIG);
-    return EMPTY_CONFIG;
+    const fixedConfig = withFixedProviderConfig(EMPTY_CONFIG);
+    await writeConfigFile(fixedConfig);
+    return fixedConfig;
   }
 }
 
 export async function writeConfig(config: AppConfig): Promise<AppConfig> {
-  const validated = appConfigSchema.parse(config);
+  const validated = withFixedProviderConfig(appConfigSchema.parse(config));
   await writeConfigFile(validated);
   return validated;
 }

@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { SKILL_FOLDER_CATEGORIES, type SkillFolderCategory } from "@/lib/skill-categories";
+import { VISIBLE_SKILL_FOLDER_CATEGORIES, type SkillFolderCategory } from "@/lib/skill-categories";
 import type { SkillFolder } from "@/lib/services/skill-service";
 
 type DirectoryFile = File & {
@@ -139,7 +139,7 @@ export function SkillsPanel() {
           </div>
         ) : (
           <div className="grid gap-2">
-            {SKILL_FOLDER_CATEGORIES.map((category) => {
+            {VISIBLE_SKILL_FOLDER_CATEGORIES.map((category) => {
               const skill = skills.find((item) => item.name === category) ?? {
                 fileCount: 0,
                 name: category,

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "next-intl";
+import { toast } from "sonner";
 import { v4 as createUuid } from "uuid";
 import type { ChatWindowSubmitPayload } from "@/components/canvas/chat-window";
 import { resolveGlobalAgentCommand } from "@/components/layout/global-chat-drawer/resolve-agent-command";
@@ -16,9 +17,15 @@ import {
 import {
   createProjectSkillContext,
   deleteProjectSkillContext,
+  fetchProjectCanvasData,
   fetchProjectImages,
   fetchProjectVideos,
+  generateProjectImage,
+  generateProjectVideo,
   normalizeProjectStoryboardAssets,
+  updateProjectImagePrompt,
+  updateProjectStoryboardPrompt,
+  updateProjectVideoPrompt,
   type ProjectSkillContextFile,
 } from "@/lib/project-api";
 import { useAgentStore } from "@/store/use-agent-store";
@@ -208,9 +215,22 @@ function formatDirectSkillContext(route: WorkflowSkillRoute | null) {
     `[Direct Skill]`,
     `Skill file: ${PROJECT_ROOT_PROMPT_TOKEN}/skills/${route.primarySkill}/SKILL.md`,
     "Open and follow the primary skill file directly.",
+    "Execute the complete skill workflow now. Do not only acknowledge, summarize intent, or say you are starting. Finish the required API/file operations before your final response.",
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+function formatAssetParseReliabilityContext(featureSkill: ChatFeatureSkill) {
+  if (featureSkill !== "asset-parse") return "";
+
+  return [
+    `[Asset Parse Reliability Rules]`,
+    `Use the images PATCH action "bulk-upsert" in batches of at most 5 records.`,
+    `Do not use "bulk-replace" for this run.`,
+    `Do not create /tmp payload files or one giant JSON heredoc.`,
+    `After each PATCH, verify the HTTP status is 2xx before continuing.`,
+  ].join("\n");
 }
 
 function buildInlineGridCommand(params: {
@@ -253,6 +273,7 @@ function buildInlineGridCommand(params: {
     params.skillContext
       ? `[Skill Temporary Context]\nDirectory: ${params.skillContext.contextDir}\nManifest: ${params.skillContext.manifestPath}\nRead the manifest's files and references for @-mentioned assets, reference images, and temporary images. Use the copied files inside this directory for attachments; do not read original project temp paths. Each send gets a unique directory; do not read other temp context directories.\n${buildSkillContextCleanupInstruction(params.skillContext.contextDir)}`
       : "",
+    formatAssetParseReliabilityContext(params.context.featureSkill),
     `[Command]\n${params.payload.text}`,
   ]
     .filter(Boolean)
@@ -270,6 +291,15 @@ function shouldVerifyStoredTargetMedia(context: SilentAgentContext) {
     context.featureSkill === "asset-panel-generate" ||
     context.featureSkill === "storyboard-image-generate" ||
     context.featureSkill === "video-generate"
+  );
+}
+
+function isCodeGenerationSkill(featureSkill: ChatFeatureSkill) {
+  return (
+    featureSkill === "asset-generate" ||
+    featureSkill === "asset-panel-generate" ||
+    featureSkill === "storyboard-image-generate" ||
+    featureSkill === "video-generate"
   );
 }
 
@@ -309,6 +339,45 @@ async function hasStoredTargetMedia(projectId: string, context: SilentAgentConte
   } catch {
     return false;
   }
+}
+
+async function persistTargetPrompt(projectId: string, payload: ChatWindowSubmitPayload, context: SilentAgentContext) {
+  if (!context.mediaId || !payload.text) return;
+
+  if (context.storyboardId && context.featureSkill === "video-generate") {
+    const result = await updateProjectStoryboardPrompt(projectId, {
+      field: "videoPrompt",
+      prompt: payload.text,
+      storyboardId: context.storyboardId,
+    });
+    if (result.episodeId) {
+      const canvasData = await fetchProjectCanvasData(projectId, result.episodeId);
+      useCanvasStore.getState().mergeProjectCanvasData(projectId, result.episodeId, canvasData);
+    }
+    return;
+  }
+
+  if (context.storyboardId && context.featureSkill === "storyboard-image-generate") {
+    const result = await updateProjectStoryboardPrompt(projectId, {
+      field: "prompt",
+      prompt: payload.text,
+      storyboardId: context.storyboardId,
+    });
+    if (result.episodeId) {
+      const canvasData = await fetchProjectCanvasData(projectId, result.episodeId);
+      useCanvasStore.getState().mergeProjectCanvasData(projectId, result.episodeId, canvasData);
+    }
+    return;
+  }
+
+  if (context.mediaType === "video" || context.featureSkill === "video-generate") {
+    const result = await updateProjectVideoPrompt(projectId, context.mediaId, payload.text);
+    useCanvasStore.getState().updateVideoAsset(result.video);
+    return;
+  }
+
+  const result = await updateProjectImagePrompt(projectId, context.mediaId, payload.text);
+  useCanvasStore.getState().updateImageAsset(result.image);
 }
 
 export function useSilentAgentCommand() {
@@ -379,7 +448,8 @@ export function useSilentAgentCommand() {
       context: SilentAgentContext,
       options: SilentAgentExecuteOptions = {},
     ) => {
-      if (!selectedAgent || !currentProject) return;
+      if (!currentProject) return;
+      if (!isCodeGenerationSkill(context.featureSkill) && !selectedAgent) return;
 
       const executionKey = getExecutionKey(context);
       if (runningCommandsRef.current.has(executionKey)) return;
@@ -403,6 +473,63 @@ export function useSilentAgentCommand() {
         let skillContext: Awaited<ReturnType<typeof createProjectSkillContext>> | null = null;
 
         try {
+          if (isCodeGenerationSkill(context.featureSkill)) {
+            if (!context.mediaId) throw new Error("GENERATION_TARGET_MISSING");
+            console.log("[code-generation-client] start", {
+              attachmentCount: payload.attachments.length,
+              featureSkill: context.featureSkill,
+              mediaId: context.mediaId,
+              mediaType: context.mediaType,
+              projectId: currentProject.id,
+              storyboardId: context.storyboardId,
+            });
+
+            if (context.featureSkill === "video-generate") {
+              if (!context.storyboardId) throw new Error("STORYBOARD_TARGET_MISSING");
+              const result = await generateProjectVideo(currentProject.id, {
+                attachments: payload.attachments,
+                mediaId: context.mediaId,
+                prompt: payload.text,
+                storyboardId: context.storyboardId,
+                videoOptions: payload.videoOptions,
+              });
+
+              if (result.mode === "stored") {
+                useCanvasStore.getState().addVideoToStoryboard(context.storyboardId, result.video);
+                setCommandStatus(context.mediaId, "success");
+              }
+              console.log("[code-generation-client] video-success", {
+                mediaId: context.mediaId,
+                mode: result.mode,
+                projectId: currentProject.id,
+                storyboardId: context.storyboardId,
+              });
+              return;
+            }
+
+            const result = await generateProjectImage(currentProject.id, {
+              attachments: payload.attachments,
+              mediaId: context.mediaId,
+              prompt: payload.text,
+              storyboardId: context.storyboardId,
+              target: context.featureSkill === "storyboard-image-generate" ? "storyboard" : "asset",
+            });
+            useCanvasStore.getState().updateImageAsset(result.image);
+            setCommandStatus(context.mediaId, "success");
+            console.log("[code-generation-client] image-success", {
+              hasUrl: Boolean(result.image.url?.trim()),
+              mediaId: context.mediaId,
+              projectId: currentProject.id,
+            });
+            return;
+          }
+
+          if (!selectedAgent) return;
+
+          await persistTargetPrompt(currentProject.id, payload, context).catch(() => {
+            // Prompt persistence is best-effort and must not block generation.
+          });
+
           skillContext = needsSkillContext(payload, context.featureSkill)
             ? await createProjectSkillContext(currentProject.id, {
               attachments: payload.attachments,
@@ -505,7 +632,6 @@ export function useSilentAgentCommand() {
           if (context.mediaId) {
             if (shouldVerifyStoredTargetMedia(context)) {
               const stored = await hasStoredTargetMedia(currentProject.id, context);
-              if (context.featureSkill === "video-generate" && !stored) return;
               setCommandStatus(context.mediaId, stored ? "success" : "error");
             } else {
               setCommandStatus(context.mediaId, "success");
@@ -522,6 +648,9 @@ export function useSilentAgentCommand() {
           if (context.mediaId) {
             const stored = await hasStoredTargetMedia(currentProject.id, context);
             setCommandStatus(context.mediaId, stored ? "success" : "error");
+          }
+          if (isCodeGenerationSkill(context.featureSkill)) {
+            toast.error(error instanceof Error ? error.message : "生成失败");
           }
           // Inline grid chat intentionally does not render execution output.
         } finally {

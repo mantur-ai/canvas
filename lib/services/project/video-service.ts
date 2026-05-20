@@ -295,10 +295,48 @@ export async function updateProjectVideoFile(params: {
   }
 }
 
+export async function updateProjectVideoPrompt(params: {
+  projectId: string;
+  prompt: string;
+  videoId: string;
+}): Promise<
+  | { success: true; video: ProjectVideoAsset; videos: ProjectVideoAsset[] }
+  | { success: false; error: string }
+> {
+  try {
+    const videosDir = path.resolve(getProjectDir(params.projectId), "videos");
+    const videosJsonPath = path.resolve(videosDir, "videos.json");
+    assertSafeProjectPath(videosDir);
+    assertSafeProjectPath(videosJsonPath);
+
+    await mkdir(videosDir, { recursive: true });
+    const currentVideos = await readFile(videosJsonPath, "utf8")
+      .then((content) => readProjectVideoAssets(JSON.parse(content)))
+      .catch(() => []);
+    const currentVideo = currentVideos.find((video) => video.id === params.videoId);
+    if (!currentVideo) return { success: false, error: "VIDEO_NOT_FOUND" };
+
+    const nextVideo: ProjectVideoAsset = {
+      ...currentVideo,
+      prompt: params.prompt,
+    };
+    const videos = currentVideos.map((video) => (video.id === params.videoId ? nextVideo : video));
+    await writeFile(videosJsonPath, JSON.stringify(videos, null, 2), "utf8");
+
+    return { success: true, video: nextVideo, videos };
+  } catch (err) {
+    if (err instanceof Error) {
+      return { success: false, error: err.message };
+    }
+    return { success: false, error: "UNKNOWN_ERROR" };
+  }
+}
+
 export async function storeGeneratedProjectVideo(params: {
   cover?: string;
   duration?: string;
   name?: string;
+  prompt?: string;
   projectId: string;
   resultUrl: string;
   source?: string;
@@ -355,7 +393,7 @@ export async function storeGeneratedProjectVideo(params: {
       duration,
       name: params.name ?? currentVideo?.name ?? "",
       poster: generatedCover,
-      prompt: "",
+      prompt: params.prompt ?? currentVideo?.prompt ?? "",
       source: params.source ?? currentVideo?.source ?? "generate",
       status: params.status ?? "",
       url: `/api/projects/${encodeURIComponent(params.projectId)}/videos/${encodeURIComponent(fileName)}`,

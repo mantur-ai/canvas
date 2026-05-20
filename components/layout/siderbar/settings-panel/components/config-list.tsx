@@ -1,10 +1,8 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { ModelProviderIcon } from "@/components/model-provider-icon";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { resolveModelProvider } from "@/lib/model-providers";
@@ -16,26 +14,18 @@ import { getSectionIcon, hasApiKey, hasDefaultFlag, maskApiKey } from "../utils"
 type ConfigListProps = {
   activeItems: ConfigItem[];
   activeSection: ConfigSection;
-  deleteConfirmId: string | null;
-  isCreateMode: boolean;
   isLoading: boolean;
   selectedId: string | null;
-  onCreate: () => void;
   onDefaultChange: (itemId: string, checked: boolean) => void;
-  onRemove: (itemId: string) => void;
   onSelectItem: (item: ConfigItem | null) => void;
 };
 
 export function ConfigList({
   activeItems,
   activeSection,
-  deleteConfirmId,
-  isCreateMode,
   isLoading,
   selectedId,
-  onCreate,
   onDefaultChange,
-  onRemove,
   onSelectItem,
 }: ConfigListProps) {
   const t = useTranslations("Settings");
@@ -43,16 +33,6 @@ export function ConfigList({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
-      <Button
-        type="button"
-        variant={isCreateMode ? "default" : "secondary"}
-        onClick={onCreate}
-        className="h-10 justify-start"
-      >
-        <Plus className="size-4" />
-        {t("modelManager.actions.new")}
-      </Button>
-
       <div className="flex items-center justify-between px-1">
         <h4 className="text-xs font-medium text-muted-foreground">
           {t("modelManager.list.title", { type: t(`modelManager.sections.${activeSection}`) })}
@@ -71,7 +51,6 @@ export function ConfigList({
           <div className="grid gap-2">
             {activeItems.map((item) => {
               const isSelected = selectedId === item.id;
-              const isConfirmingDelete = deleteConfirmId === item.id;
               const provider =
                 activeSection === "imageBed" || !hasApiKey(item)
                   ? undefined
@@ -127,28 +106,6 @@ export function ConfigList({
                       className="mt-2"
                     />
                   ) : null}
-
-                  <Button
-                    type="button"
-                    variant={isConfirmingDelete ? "destructive" : "ghost"}
-                    size={isConfirmingDelete ? "xs" : "icon-sm"}
-                    onClick={() => onRemove(item.id)}
-                    aria-label={
-                      isConfirmingDelete
-                        ? t("modelManager.actions.confirmRemove")
-                        : t("modelManager.actions.remove")
-                    }
-                    className={cn(
-                      "shrink-0",
-                      !isConfirmingDelete && "text-muted-foreground hover:text-destructive",
-                    )}
-                  >
-                    {isConfirmingDelete ? (
-                      t("modelManager.actions.confirmRemove")
-                    ) : (
-                      <Trash2 className="size-4" />
-                    )}
-                  </Button>
                 </div>
               );
             })}

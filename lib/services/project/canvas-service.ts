@@ -26,6 +26,7 @@ import {
   readString,
   readStringArray,
   selectStoryboardAssetIds,
+  updateProjectStoryboard,
 } from "./shared";
 
 export async function getProjectFlow(projectId: string): Promise<
@@ -266,6 +267,24 @@ export async function saveProjectEpisodeStoryboards(params: {
     }
     return { success: false, error: "UNKNOWN_ERROR" };
   }
+}
+
+export async function updateProjectStoryboardPrompt(params: {
+  field: "prompt" | "videoPrompt";
+  projectId: string;
+  prompt: string;
+  storyboardId: string;
+}) {
+  return updateProjectStoryboard({
+    projectId: params.projectId,
+    update: (storyboard) =>
+      storyboard.id === params.storyboardId
+        ? {
+            ...storyboard,
+            [params.field]: params.prompt,
+          }
+        : storyboard,
+  });
 }
 
 export async function saveProjectFlow(params: {

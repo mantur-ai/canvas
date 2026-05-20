@@ -8,6 +8,7 @@ import {
   setProjectStoryboardSelectedVideo,
   storeGeneratedProjectVideo,
   updateProjectVideoFile,
+  updateProjectVideoPrompt,
 } from "@/lib/services/project-service";
 
 function toErrorResponse() {
@@ -85,6 +86,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ proje
       cover?: unknown;
       duration?: unknown;
       name?: unknown;
+      prompt?: unknown;
       resultUrl?: unknown;
       source?: unknown;
       status?: unknown;
@@ -100,11 +102,30 @@ export async function PATCH(request: Request, context: { params: Promise<{ proje
         cover: typeof body.cover === "string" ? body.cover : undefined,
         duration: typeof body.duration === "string" ? body.duration : undefined,
         name: typeof body.name === "string" ? body.name : undefined,
+        prompt: typeof body.prompt === "string" ? body.prompt : undefined,
         projectId,
         resultUrl: body.resultUrl,
         source: typeof body.source === "string" ? body.source : undefined,
         status: typeof body.status === "string" ? body.status : undefined,
         storyboardId: typeof body.storyboardId === "string" ? body.storyboardId : undefined,
+        videoId: body.videoId,
+      });
+      if (!result.success) return toErrorResponse();
+
+      return NextResponse.json({
+        video: result.video,
+        videos: result.videos,
+      });
+    }
+
+    if (
+      body.action === "update-prompt" &&
+      typeof body.videoId === "string" &&
+      typeof body.prompt === "string"
+    ) {
+      const result = await updateProjectVideoPrompt({
+        projectId,
+        prompt: body.prompt,
         videoId: body.videoId,
       });
       if (!result.success) return toErrorResponse();

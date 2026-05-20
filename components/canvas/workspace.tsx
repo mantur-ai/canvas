@@ -716,8 +716,7 @@ function CanvasWorkspaceInner() {
                             : "storyboard-image-generate",
                       mediaId: targetSelection.item.id,
                       mediaType: targetSelection.item.type,
-                      storyboardId:
-                        targetSelection.item.type === "video" ? targetSelection.sceneId : undefined,
+                      storyboardId: targetSelection.sceneId,
                       scope: "canvas-grid",
                     },
                     {
