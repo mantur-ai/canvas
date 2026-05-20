@@ -483,6 +483,7 @@ export function useSilentAgentCommand() {
               projectId: currentProject.id,
               storyboardId: context.storyboardId,
             });
+            await persistTargetPrompt(currentProject.id, payload, context);
 
             if (context.featureSkill === "video-generate") {
               if (!context.storyboardId) throw new Error("STORYBOARD_TARGET_MISSING");
