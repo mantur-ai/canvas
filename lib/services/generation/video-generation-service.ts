@@ -88,6 +88,55 @@ async function resolveVideoModel(projectVideoModel: Awaited<ReturnType<typeof re
   return fixedModel ? { ...fixedModel, apiKey } : null;
 }
 
+function isHappyhorseModel(model: { id?: string; name?: string; providerId?: string }) {
+  return Boolean(
+    model.providerId === "happyhorse" ||
+    model.id === "fixed-video-happyhorse-1-r2v" ||
+    model.name?.toLowerCase().includes("happyhorse"),
+  );
+}
+
+function buildVideoProviderRequest(params: {
+  duration: number;
+  finalPrompt: string;
+  happyhorse: boolean;
+  project: { aspectRatio: string; generateAudio: boolean; resolution: string };
+  references: { publicUrl: string }[];
+}) {
+  if (params.happyhorse) {
+    return {
+      body: {
+        duration: params.duration,
+        images: params.references.map((reference) => reference.publicUrl),
+        metadata: { ratio: params.project.aspectRatio },
+        model: "happyhorse-1.0-r2v",
+        prompt: params.finalPrompt,
+        size: "720P",
+      },
+      model: "happyhorse-1.0-r2v",
+    };
+  }
+
+  return {
+    body: {
+      metadata: {
+        content: params.references.map((reference) => ({
+          image_url: { url: reference.publicUrl },
+          role: "reference_image",
+          type: "image_url",
+        })),
+        duration: params.duration,
+        generate_audio: params.project.generateAudio,
+        ratio: params.project.aspectRatio,
+        resolution: params.project.resolution,
+      },
+      model: "doubao-seedance-2-0-260128",
+      prompt: params.finalPrompt,
+    },
+    model: "doubao-seedance-2-0-260128",
+  };
+}
+
 export async function generateProjectVideo(input: GenerateVideoInput) {
   logGenerationStep("video:start", {
     attachmentCount: input.attachments.length,
@@ -128,14 +177,26 @@ export async function generateProjectVideo(input: GenerateVideoInput) {
     projectId: input.projectId,
     prompt: input.prompt,
   });
-  const prompt = replacePromptMentionsWithLabels(input.prompt, references, (index) => `@图片${index + 1}`);
+  const happyhorse = isHappyhorseModel(videoModel);
+  const prompt = replacePromptMentionsWithLabels(
+    input.prompt,
+    references,
+    (index) => happyhorse ? `[Image ${index + 1}]` : `@图片${index + 1}`,
+  );
   const duration = input.videoOptions?.durationSeconds ?? 5;
   const shotText = input.videoOptions?.shotType ? ` Shot type: ${input.videoOptions.shotType}.` : "";
   const finalPrompt = `${prompt}${shotText}`;
+  const providerRequest = buildVideoProviderRequest({
+    duration,
+    finalPrompt,
+    happyhorse,
+    project,
+    references,
+  });
   logGenerationStep("video:provider-request", {
     duration,
     mediaId: input.mediaId,
-    model: "doubao-seedance-2-0-260128",
+    model: providerRequest.model,
     projectId: input.projectId,
     referenceCount: references.length,
     storyboardId: input.storyboardId,
@@ -147,21 +208,7 @@ export async function generateProjectVideo(input: GenerateVideoInput) {
       Authorization: `Bearer ${videoModel.apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      metadata: {
-        content: references.map((reference) => ({
-          image_url: { url: reference.publicUrl },
-          role: "reference_image",
-          type: "image_url",
-        })),
-        duration,
-        generate_audio: project.generateAudio,
-        ratio: project.aspectRatio,
-        resolution: project.resolution,
-      },
-      model: "doubao-seedance-2-0-260128",
-      prompt: finalPrompt,
-    }),
+    body: JSON.stringify(providerRequest.body),
   });
   const text = await response.text();
   const payload = parseProviderJson(text);

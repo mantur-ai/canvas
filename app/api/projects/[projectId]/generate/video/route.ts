@@ -3,7 +3,7 @@ import { generateProjectVideo } from "@/lib/services/generation/video-generation
 import type { GenerationAttachment } from "@/lib/services/generation/shared";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 function readString(value: unknown) {
   return typeof value === "string" ? value : "";

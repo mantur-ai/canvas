@@ -23,6 +23,13 @@ export const FIXED_VIDEO_MODELS = [
     providerId: "seedance",
     videoReferenceMode: "all-purpose",
   },
+  {
+    example: "fixed-provider:happyhorse-1-r2v",
+    id: "fixed-video-happyhorse-1-r2v",
+    name: "happyhorse",
+    providerId: "happyhorse",
+    videoReferenceMode: "all-purpose",
+  },
 ] as const;
 
 export const FIXED_IMAGE_BEDS = [
