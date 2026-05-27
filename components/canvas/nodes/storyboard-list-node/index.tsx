@@ -3,7 +3,7 @@
 import { useState, type KeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import { ChevronDown, ChevronUp, Loader2, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useSilentAgentCommand } from "@/components/canvas/use-silent-agent-command";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,10 +15,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { STORYBOARD_PARSE_USER_PROMPT } from "@/lib/chat-prompts";
-import { fetchProjectCanvasData } from "@/lib/project-api";
+import { fetchProjectCanvasData, saveProjectEpisodeStoryboards } from "@/lib/project-api";
+import type { ProjectStoryboard } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
 import { type StoryboardListNodeData, useCanvasStore } from "@/store/use-canvas-store";
 import { NODE_WIDTH_CLASS } from "../constants";
@@ -34,14 +37,34 @@ const NODE_EMPTY_STATE_CLASS =
   "bg-card flex h-105 border border-border rounded-2xl flex-col items-center justify-center gap-3 text-xs text-muted-foreground";
 
 type StoryboardListNodeType = Node<StoryboardListNodeData, "storyboard-list-node">;
+type StoryboardEditForm = Pick<
+  ProjectStoryboard,
+  "description" | "name" | "prompt" | "videoPrompt"
+>;
+
+const EMPTY_STORYBOARD_EDIT_FORM: StoryboardEditForm = {
+  description: "",
+  name: "",
+  prompt: "",
+  videoPrompt: "",
+};
 
 function getEpisodeNumber(episodeName: string) {
   return episodeName.match(/第\s*(\d+)\s*集/u)?.[1] ?? "";
 }
 
+function formatStoryboardDisplayName(sequenceLabel: string, businessName: string) {
+  const trimmedBusinessName = businessName.trim();
+  return trimmedBusinessName ? `${sequenceLabel} · ${trimmedBusinessName}` : sequenceLabel;
+}
+
 export function StoryboardListNode({ data, selected }: NodeProps<StoryboardListNodeType>) {
   const t = useTranslations("Canvas");
   const { execute: executeSilentAgentCommand } = useSilentAgentCommand();
+  const [editError, setEditError] = useState("");
+  const [editForm, setEditForm] = useState<StoryboardEditForm>(EMPTY_STORYBOARD_EDIT_FORM);
+  const [editingStoryboardId, setEditingStoryboardId] = useState<string | null>(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const addStoryboard = useCanvasStore((state) => state.addStoryboard);
   const commandStatus = useCanvasStore((state) => state.commandStatuses[data.episodeId]);
@@ -54,35 +77,96 @@ export function StoryboardListNode({ data, selected }: NodeProps<StoryboardListN
   const setActiveStoryboardId = useCanvasStore((state) => state.setActiveStoryboardId);
   const setProjectCanvasData = useCanvasStore((state) => state.setProjectCanvasData);
   const toggleStoryboardSelection = useCanvasStore((state) => state.toggleStoryboardSelection);
+  const updateStoryboard = useCanvasStore((state) => state.updateStoryboard);
   const storyboardCommandLoading = commandStatus === "loading";
   const active = selected || activeEpisodeId === data.episodeId;
   const pendingDeleteStoryboard = data.storyboards.find(
     (storyboard) => storyboard.id === pendingDeleteId,
   );
-  const pendingDeleteName = pendingDeleteStoryboard
-    ? pendingDeleteStoryboard.name.trim() ||
-      t("storyboardList.itemLabel", {
-        index: data.storyboards.findIndex((storyboard) => storyboard.id === pendingDeleteId) + 1,
-      })
-    : "";
+  const pendingDeleteIndex = pendingDeleteId
+    ? data.storyboards.findIndex((storyboard) => storyboard.id === pendingDeleteId)
+    : -1;
+  const pendingDeleteName =
+    pendingDeleteStoryboard && pendingDeleteIndex >= 0
+      ? formatStoryboardDisplayName(
+          t("storyboardList.sequenceLabel", { index: pendingDeleteIndex + 1 }),
+          pendingDeleteStoryboard.name,
+        )
+      : "";
 
   const toggleSelectedStoryboard = (storyboardId: string) => {
     setActiveStoryboardId(storyboardId);
     toggleStoryboardSelection(storyboardId);
   };
 
-  const handleAddStoryboard = () => {
-    const afterStoryboardId = data.storyboards.some((storyboard) => storyboard.id === activeStoryboardId)
-      ? activeStoryboardId
-      : undefined;
-
-    addStoryboard(data.episodeId, afterStoryboardId);
+  const openStoryboardEditor = (storyboard: ProjectStoryboard) => {
+    setEditError("");
+    setEditForm({
+      description: storyboard.description,
+      name: storyboard.name,
+      prompt: storyboard.prompt,
+      videoPrompt: storyboard.videoPrompt,
+    });
+    setEditingStoryboardId(storyboard.id);
   };
 
-  const handleStoryboardKeyDown = (
-    event: KeyboardEvent<HTMLDivElement>,
-    storyboardId: string,
-  ) => {
+  const handleAddStoryboard = (afterStoryboardId?: string) => {
+    const storyboardId = addStoryboard(data.episodeId, afterStoryboardId);
+    if (!storyboardId) return;
+
+    setActiveStoryboardId(storyboardId);
+    setEditError("");
+    setEditForm(EMPTY_STORYBOARD_EDIT_FORM);
+    setEditingStoryboardId(storyboardId);
+  };
+
+  const handleSaveStoryboard = async () => {
+    if (!currentProject || !editingStoryboardId) return;
+
+    const episodeCanvasData = useCanvasStore.getState().currentCanvasDataByEpisode[data.episodeId];
+    if (!episodeCanvasData) return;
+
+    const updates: StoryboardEditForm = {
+      description: editForm.description.trim(),
+      name: editForm.name.trim(),
+      prompt: editForm.prompt.trim(),
+      videoPrompt: editForm.videoPrompt.trim(),
+    };
+    const nextStoryboards = episodeCanvasData.data.storyboards.map((storyboard) =>
+      storyboard.id === editingStoryboardId
+        ? {
+            ...storyboard,
+            ...updates,
+          }
+        : storyboard,
+    );
+
+    setIsSavingEdit(true);
+    setEditError("");
+    try {
+      await saveProjectEpisodeStoryboards(
+        currentProject.id,
+        data.episodeId,
+        nextStoryboards.map((storyboard) => ({
+          description: storyboard.description,
+          id: storyboard.id,
+          name: storyboard.name,
+          prompt: storyboard.prompt,
+          videoPrompt: storyboard.videoPrompt,
+        })),
+      );
+      updateStoryboard(editingStoryboardId, updates);
+      const canvasData = await fetchProjectCanvasData(currentProject.id, data.episodeId);
+      setProjectCanvasData(currentProject.id, data.episodeId, canvasData);
+      setEditingStoryboardId(null);
+    } catch {
+      setEditError(t("storyboardList.saveError"));
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleStoryboardKeyDown = (event: KeyboardEvent<HTMLDivElement>, storyboardId: string) => {
     if (event.key !== "Enter" && event.key !== " ") return;
 
     event.preventDefault();
@@ -149,7 +233,12 @@ export function StoryboardListNode({ data, selected }: NodeProps<StoryboardListN
           className="nodrag shrink-0 bg-card"
           onClick={(event) => {
             event.stopPropagation();
-            handleAddStoryboard();
+            const afterStoryboardId = data.storyboards.some(
+              (storyboard) => storyboard.id === activeStoryboardId,
+            )
+              ? activeStoryboardId
+              : undefined;
+            handleAddStoryboard(afterStoryboardId);
           }}
         >
           <Plus className="size-3.5" />
@@ -170,11 +259,8 @@ export function StoryboardListNode({ data, selected }: NodeProps<StoryboardListN
             <div className={NODE_SCROLL_CONTENT_CLASS}>
               {data.storyboards.map((storyboard, index) => {
                 const selected = selectedStoryboardIds.includes(storyboard.id);
-                const storyboardName =
-                  storyboard.name.trim() ||
-                  t("storyboardList.itemLabel", {
-                    index: index + 1,
-                  });
+                const sequenceLabel = t("storyboardList.sequenceLabel", { index: index + 1 });
+                const storyboardName = formatStoryboardDisplayName(sequenceLabel, storyboard.name);
 
                 return (
                   <div
@@ -183,14 +269,10 @@ export function StoryboardListNode({ data, selected }: NodeProps<StoryboardListN
                     tabIndex={0}
                     aria-pressed={selected}
                     onClick={() => toggleSelectedStoryboard(storyboard.id)}
-                    onKeyDown={(event) =>
-                      handleStoryboardKeyDown(event, storyboard.id)
-                    }
+                    onKeyDown={(event) => handleStoryboardKeyDown(event, storyboard.id)}
                     className={cn(
                       "group relative w-full cursor-pointer overflow-hidden rounded-xl border bg-muted text-left transition-colors",
-                      selected
-                        ? "border-primary bg-primary/10 "
-                        : "border-border hover:bg-accent",
+                      selected ? "border-primary bg-primary/10 " : "border-border hover:bg-accent",
                     )}
                   >
                     <div className="mb-1 flex min-w-0 items-center gap-2">
@@ -214,11 +296,24 @@ export function StoryboardListNode({ data, selected }: NodeProps<StoryboardListN
                         type="button"
                         size="icon"
                         variant="ghost"
+                        aria-label={t("storyboardList.edit", { name: storyboardName })}
+                        className="size-6 rounded-full text-muted-foreground hover:text-foreground"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openStoryboardEditor(storyboard);
+                        }}
+                      >
+                        <Pencil className="size-3.5" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
                         aria-label={t("storyboardList.add")}
                         className="size-6 rounded-full text-muted-foreground hover:text-foreground"
                         onClick={(event) => {
                           event.stopPropagation();
-                          addStoryboard(data.episodeId, storyboard.id);
+                          handleAddStoryboard(storyboard.id);
                         }}
                       >
                         <Plus className="size-3.5" />
@@ -271,45 +366,134 @@ export function StoryboardListNode({ data, selected }: NodeProps<StoryboardListN
             </div>
           </ScrollArea>
         ) : (
-          
-            <div className={NODE_EMPTY_STATE_CLASS}>
-              <span>{t("storyboardList.empty")}</span>
-              <TooltipProvider delayDuration={200}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span
-                      className={cn(
-                        "inline-flex rounded-md",
-                        !currentProject?.assetsParsed && "cursor-not-allowed",
-                      )}
+          <div className={NODE_EMPTY_STATE_CLASS}>
+            <span>{t("storyboardList.empty")}</span>
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className={cn(
+                      "inline-flex rounded-md",
+                      !currentProject?.assetsParsed && "cursor-not-allowed",
+                    )}
+                  >
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={!currentProject?.assetsParsed || storyboardCommandLoading}
+                      className="gap-2 bg-transparent disabled:pointer-events-none"
+                      onClick={handleParseStoryboard}
                     >
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={!currentProject?.assetsParsed || storyboardCommandLoading}
-                        className="gap-2 bg-transparent disabled:pointer-events-none"
-                        onClick={handleParseStoryboard}
-                      >
-                        {storyboardCommandLoading ? (
-                          <Loader2 className="size-3.5 animate-spin" />
-                        ) : null}
-                        {t("storyboardList.parse")}
-                      </Button>
-                    </span>
-                  </TooltipTrigger>
-                  {!currentProject?.assetsParsed ? (
-                    <TooltipContent side="top">
-                      {t("storyboardList.parseAssetsFirst")}
-                    </TooltipContent>
-                  ) : null}
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          
+                      {storyboardCommandLoading ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : null}
+                      {t("storyboardList.parse")}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!currentProject?.assetsParsed ? (
+                  <TooltipContent side="top">{t("storyboardList.parseAssetsFirst")}</TooltipContent>
+                ) : null}
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         )}
       </div>
       <Handle type="source" position={Position.Right} className="bg-primary!" />
+      <Dialog
+        open={editingStoryboardId !== null}
+        onOpenChange={(open) => {
+          if (!open && !isSavingEdit) setEditingStoryboardId(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("storyboardList.editTitle")}</DialogTitle>
+            <DialogDescription>{t("storyboardList.editDescription")}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <label className="grid gap-1.5 text-sm">
+              <span className="text-xs font-medium text-muted-foreground">
+                {t("storyboardList.businessName")}
+              </span>
+              <Input
+                value={editForm.name}
+                onChange={(event) =>
+                  setEditForm((current) => ({
+                    ...current,
+                    name: event.target.value,
+                  }))
+                }
+                placeholder={t("storyboardList.namePlaceholder")}
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              <span className="text-xs font-medium text-muted-foreground">
+                {t("storyboardList.description")}
+              </span>
+              <Textarea
+                value={editForm.description}
+                onChange={(event) =>
+                  setEditForm((current) => ({
+                    ...current,
+                    description: event.target.value,
+                  }))
+                }
+                placeholder={t("storyboardList.descriptionPlaceholder")}
+                className="min-h-20"
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              <span className="text-xs font-medium text-muted-foreground">
+                {t("storyboardList.prompt")}
+              </span>
+              <Textarea
+                value={editForm.prompt}
+                onChange={(event) =>
+                  setEditForm((current) => ({
+                    ...current,
+                    prompt: event.target.value,
+                  }))
+                }
+                placeholder={t("storyboardList.promptPlaceholder")}
+                className="min-h-24"
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              <span className="text-xs font-medium text-muted-foreground">
+                {t("storyboardList.videoPrompt")}
+              </span>
+              <Textarea
+                value={editForm.videoPrompt}
+                onChange={(event) =>
+                  setEditForm((current) => ({
+                    ...current,
+                    videoPrompt: event.target.value,
+                  }))
+                }
+                placeholder={t("storyboardList.videoPromptPlaceholder")}
+                className="min-h-24"
+              />
+            </label>
+            {editError ? <p className="text-xs text-destructive">{editError}</p> : null}
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline" disabled={isSavingEdit}>
+                {t("storyboardList.cancel")}
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              onClick={() => void handleSaveStoryboard()}
+              disabled={isSavingEdit}
+            >
+              {isSavingEdit ? t("storyboardList.saving") : t("storyboardList.save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={pendingDeleteId !== null}
         onOpenChange={(open) => {
